@@ -114,7 +114,7 @@ flowchart LR
 
 ### FR-D05 Heartbeat / Reconnect
 
-**Description:** Device shall send periodic heartbeat via `Envelope` with `Null` payload; Host shall reconnect on disconnect.
+**Description:** Device shall send periodic heartbeat via `Envelope` with `NullPacket` payload; Host shall reconnect on disconnect.
 
 | Attribute | Value |
 |-----------|-------|

@@ -2,13 +2,14 @@ syntax = "proto3";
 package monitor;
 
 // Timestamp lives only in Heartbeat. Envelope always carries heartbeat;
-// optional payload via oneof. Use Null when heartbeat-only.
+// optional payload via oneof. Use NullPacket when heartbeat-only.
 
 message Heartbeat {
   uint64 timestamp_ms = 1;
 }
 
-message Null {}
+// Empty message is valid in proto3; no placeholder fields required.
+message NullPacket {}
 
 message EcgPacket {
   uint32 hr = 1;
@@ -62,7 +63,7 @@ message TechAlarmEvent {
 message Envelope {
   Heartbeat heartbeat = 1;
   oneof payload {
-    Null null_payload = 2;
+    NullPacket null_packet = 2;
     EcgPacket ecg = 3;
     Spo2Packet spo2 = 4;
     RespPacket resp = 5;

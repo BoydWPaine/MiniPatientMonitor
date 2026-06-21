@@ -265,7 +265,7 @@ Max payload: 64 KB (configurable).
 ### 5.2 Design Principles
 
 1. **Single timestamp**: `timestamp_ms` lives only in `Heartbeat`. Every `Envelope` carries a mandatory `heartbeat` field.
-2. **Optional payload**: Module data via `oneof payload`. Heartbeat-only frames use `Null`.
+2. **Optional payload**: Module data via `oneof payload`. Heartbeat-only frames use `NullPacket` (empty message; valid in proto3).
 3. **Module isolation**: Separate packet types (`EcgPacket`, `Spo2Packet`, etc.) mirror independent hardware parameter boards.
 4. **Localized tech alarms**: `TechAlarmEvent` carries `repeated Code` only; Host maps codes to display strings (i18n).
 
@@ -279,7 +279,7 @@ message Heartbeat {
   uint64 timestamp_ms = 1;
 }
 
-message Null {}
+message NullPacket {}
 
 message EcgPacket {
   uint32 hr = 1;
@@ -333,7 +333,7 @@ message TechAlarmEvent {
 message Envelope {
   Heartbeat heartbeat = 1;
   oneof payload {
-    Null null_payload = 2;
+    NullPacket null_packet = 2;
     EcgPacket ecg = 3;
     Spo2Packet spo2 = 4;
     RespPacket resp = 5;
@@ -362,7 +362,7 @@ sequenceDiagram
         D->>H: Envelope(NibpPacket)
     end
     loop every_1s
-        D->>H: Envelope(Null) heartbeat only
+        D->>H: Envelope(NullPacket) heartbeat only
     end
     Note over D,H: TechAlarmEvent sent on fault
     H->>H: PhysAlarm_1Hz_check

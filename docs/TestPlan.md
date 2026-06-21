@@ -37,7 +37,7 @@ Define verification activities for MiniPatientMonitor demonstration software per
 | TC-UT-11 | Encode/decode `Spo2Packet`, `RespPacket`, `TempPacket`, `NibpPacket` round-trip | FR-C02 |
 | TC-UT-12 | Reject oversize length prefix | FR-C02 |
 | TC-UT-13 | `TechAlarmEvent` repeated codes serialize; no message field | FR-D04 |
-| TC-UT-14 | `Envelope` with `Null` payload (heartbeat-only) round-trip | FR-D05 |
+| TC-UT-14 | `Envelope` with `NullPacket` payload (heartbeat-only) round-trip | FR-D05 |
 | TC-UT-15 | `TempPacket.temperature` 0.1°C integer encoding (365 → 36.5°C display) | FR-D02 |
 
 ### UT-PhysAlarm

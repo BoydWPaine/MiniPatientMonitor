@@ -16,7 +16,7 @@ Maps SRS requirements → verification test cases.
 | FR-D02 | Five independent module sims; 12-lead ECG | TC-UT-40, TC-UT-42, TC-IT-02, TC-IT-03, TC-IT-09, TC-SYS-03 | Planned |
 | FR-D03 | LVGL config UI | TC-UT-41, TC-SYS-07 | Planned |
 | FR-D04 | Technical alarms (repeated Code) | TC-UT-13, TC-IT-05 | Planned |
-| FR-D05 | Heartbeat (Null payload) / reconnect | TC-UT-14, TC-IT-06 | Planned |
+| FR-D05 | Heartbeat (NullPacket payload) / reconnect | TC-UT-14, TC-IT-06 | Planned |
 
 ## Host Requirements
 
