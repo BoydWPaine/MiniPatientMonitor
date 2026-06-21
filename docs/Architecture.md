@@ -1,27 +1,38 @@
 # Architecture Design Document
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.1  
-**Date:** 2026-06-20
+**Version:** 0.2  
+**Date:** 2026-06-21
 
 ---
 
 ## 1. Architecture Overview
 
-MiniPatientMonitor uses a **dual-process** design with a shared **common layer** (OSAL, Protobuf, storage). Phase 1 targets **Windows**; phase 2 ports Device to **FreeRTOS/STM32** and Host to **Arm Linux**.
+MiniPatientMonitor uses a **dual-process** design with a shared **common layer** (OSAL, Protobuf, storage).
+
+| Phase | Device | Host | OSAL Ports |
+|-------|--------|------|------------|
+| **Phase 1** | Parameter-module simulator | Monitor application | x86 **Windows** + **Linux** |
+| **Phase 2** | STM32F407 + **FreeRTOS** | AM3358 + **ArmLinux** + Qt6 | `port_freertos`, `port_linux` |
+
+**Network topology:** Device is **TCP Server**; Host is **TCP Client**. This mirrors typical monitor architecture where parameter modules listen and the main unit connects.
 
 ```mermaid
 flowchart TB
-    subgraph deviceApp [Device]
-        ParamSim[ParamSimulator]
+    subgraph deviceApp [Device_TCP_Server]
+        EcgSim[EcgModuleSim]
+        Spo2Sim[Spo2ModuleSim]
+        RespSim[RespModuleSim]
+        TempSim[TempModuleSim]
+        NibpSim[NibpModuleSim]
         TechAlarm[TechAlarmGenerator]
         DevUI[LVGL_ConfigUI]
         Encoder[ProtocolEncoder]
-        TcpClient[TCP_Client]
+        TcpServer[TCP_Server]
     end
 
-    subgraph hostApp [Host]
-        TcpServer[TCP_Server]
+    subgraph hostApp [Host_TCP_Client]
+        TcpClient[TCP_Client]
         Decoder[ProtocolDecoder]
         WaveUI[WaveformWidgets]
         ParamUI[ParamWidgets]
@@ -39,11 +50,15 @@ flowchart TB
         BinStore[BinaryStorage]
     end
 
-    ParamSim --> Encoder
+    EcgSim --> Encoder
+    Spo2Sim --> Encoder
+    RespSim --> Encoder
+    TempSim --> Encoder
+    NibpSim --> Encoder
     TechAlarm --> Encoder
-    Encoder --> TcpClient
+    Encoder --> TcpServer
     TcpClient -->|TCP| TcpServer
-    TcpServer --> Decoder
+    TcpClient --> Decoder
     Decoder --> WaveUI
     Decoder --> ParamUI
     Decoder --> PhysAlarm
@@ -65,15 +80,15 @@ flowchart TB
 
 ### 2.1 Design Goal
 
-Allow Device and Host to share business logic headers while swapping platform implementations.
+Allow Device and Host to share business logic headers while swapping platform implementations across two development phases.
 
 ```mermaid
 flowchart TD
     DeviceApp[Device] --> OSAL[OSAL_API]
     HostApp[Host] --> OSAL
     OSAL --> PortWin[port_windows]
-    OSAL --> PortRTOS[port_freertos]
     OSAL --> PortLinux[port_linux]
+    OSAL --> PortRTOS[port_freertos]
 ```
 
 ### 2.2 API Surface (`common/osal/osal.h`)
@@ -106,13 +121,13 @@ bool osal_file_exists(const char* path);
 
 ### 2.3 Platform Mapping
 
-| OSAL API | Windows | FreeRTOS | Linux |
-|----------|---------|----------|-------|
-| thread | `_beginthreadex` | `xTaskCreate` | `pthread_create` |
-| mutex | `CRITICAL_SECTION` | `xSemaphoreCreateMutex` | `pthread_mutex` |
-| queue | `std::queue`+mutex | `xQueue` | pipe/socket pair |
-| tcp | Winsock2 | LwIP | BSD sockets |
-| file | `fopen`/`fread` | FatFS | POSIX |
+| OSAL API | Windows (Phase 1) | Linux (Phase 1) | FreeRTOS (Phase 2 Device) | ArmLinux (Phase 2 Host) |
+|----------|---------------------|-----------------|---------------------------|-------------------------|
+| thread | `_beginthreadex` | `pthread_create` | `xTaskCreate` | `pthread_create` |
+| mutex | `CRITICAL_SECTION` | `pthread_mutex` | `xSemaphoreCreateMutex` | `pthread_mutex` |
+| queue | `std::queue`+mutex | pipe/socket pair | `xQueue` | pipe/socket pair |
+| tcp | Winsock2 | BSD sockets | LwIP | BSD sockets |
+| file | `fopen`/`fread` | POSIX | FatFS | POSIX |
 
 ---
 
@@ -120,63 +135,91 @@ bool osal_file_exists(const char* path);
 
 ### 3.1 Module Responsibilities
 
-| Module | File (planned) | Responsibility |
-|--------|----------------|----------------|
-| `ParamSimulator` | `device/src/param_sim.cpp` | Sine/synthetic ECG, pleth, resp; numeric derivation |
-| `TechAlarmGen` | `device/src/tech_alarm.cpp` | Inject LEAD_OFF, MODULE_FAULT events |
-| `LVGL_ConfigUI` | `device/ui/config_ui.c` | Edit HR, SpO2, limits for demo |
-| `ProtocolEncoder` | `common/proto/encoder.cpp` | Serialize Protobuf + length prefix |
-| `NetClient` | `device/src/net_client.cpp` | TCP connect, send loop |
+Each vital-sign channel is simulated by an **independent module** that emits its own Protobuf packet type, reflecting separate hardware parameter boards.
 
-### 3.2 Task Model (FreeRTOS / Windows threads)
+| Module | File (planned) | Packet | Responsibility |
+|--------|----------------|--------|----------------|
+| `EcgModuleSim` | `device/src/ecg_sim.cpp` | `EcgPacket` | 12-lead ECG waveforms + HR |
+| `Spo2ModuleSim` | `device/src/spo2_sim.cpp` | `Spo2Packet` | SpO2, PR, pleth waveform |
+| `RespModuleSim` | `device/src/resp_sim.cpp` | `RespPacket` | Resp rate + resp waveform |
+| `TempModuleSim` | `device/src/temp_sim.cpp` | `TempPacket` | Temperature (0.1°C int) + temp wave |
+| `NibpModuleSim` | `device/src/nibp_sim.cpp` | `NibpPacket` | Sys/Mean/Dia (periodic cycle) |
+| `TechAlarmGen` | `device/src/tech_alarm.cpp` | `TechAlarmEvent` | Inject LEAD_OFF, MODULE_FAULT, etc. |
+| `LVGL_ConfigUI` | `device/ui/config_ui.c` | — | Edit HR, SpO2, limits for demo |
+| `ProtocolEncoder` | `common/proto/encoder.cpp` | `Envelope` | Serialize Protobuf + length prefix |
+| `NetServer` | `device/src/net_server.cpp` | — | TCP listen/accept, send loop |
+
+### 3.2 Task Model (FreeRTOS / Windows / Linux threads)
 
 | Task | Priority | Period | Stack |
 |------|----------|--------|-------|
-| ParamTask | High (3) | 40 ms | 2 KB |
+| EcgTask | High (3) | 40 ms | 2 KB |
+| Spo2Task | High (3) | 40 ms | 2 KB |
+| RespTask | Normal (2) | 40 ms | 2 KB |
+| TempTask | Normal (2) | 40 ms | 2 KB |
+| NibpTask | Low (1) | 30 s (demo cycle) | 1 KB |
 | NetTask | Normal (2) | event | 4 KB |
 | UITask | Low (1) | 50 ms | 4 KB |
 | AlarmTask | Normal (2) | 1000 ms | 1 KB |
 
 ### 3.3 Parameter Simulation (simplified)
 
-- **ECG**: sum of sine waves ~1 Hz + harmonics + baseline wander
-- **HR**: derived from R-R interval or configured default
+- **ECG**: 12 leads (I, II, III, aVR, aVL, aVF, V1–V6); sum of sine waves ~1 Hz + harmonics; UI defaults to Lead II + V1
+- **HR**: derived from R-R interval or configured default (72 bpm)
 - **SpO2/PR**: pleth sine modulated by HR
 - **Resp**: slower sine ~0.2 Hz
 - **NIBP**: periodic measurement cycle (demo: static 120/80/93)
-- **Temp**: slow drift around 36.5 °C
+- **Temp**: slow drift around 36.5 °C (365 in 0.1°C units) + temp waveform
 
 ---
 
 ## 4. Host Architecture
 
-### 4.1 UI Layout (1024×768)
+### 4.1 UI Layout (1024×768, pixel coordinates)
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│ TopBar 48px                                                  │
-│  PatientInfo | PhysAlarm | Icons | TechAlarm | DateTime      │
-├────────────────────────────────┬─────────────────────────────┤
-│ WaveformPanel 696px (68%)       │ ParamPanel 328px (32%)      │
-│  EcgLead2Widget                 │  HrParamRow (linked height) │
-│  EcgLeadVWidget                 │  SpO2PrRow (SpO2 large)    │
-│  PrPlethWidget                  │  RespParamRow             │
-│  RespWaveWidget                 │  NibpParamRow               │
-│                                 │  TempParamRow               │
-├────────────────────────────────┴─────────────────────────────┤
-│ BottomBar 56px — 6 shortcut buttons + dialogs                │
-└──────────────────────────────────────────────────────────────┘
-```
+| Region | Coordinates | Size |
+|--------|-------------|------|
+| TopBar | (0,0)–(1023,51) | 1024×52 |
+| PatientInfo | (0,0)–(187,51) | 188×52 |
+| PhysAlarm | (188,0)–(487,51) | 300×52 |
+| Icons | (488,0)–(535,51) | 52×52 |
+| TechAlarm | (536,0)–(835,51) | 300×52 |
+| DateTime | (836,0)–(1023,51) | 188×52 |
+| WaveformPanel | (0,52)–(891,711) | 892×660 |
+| ParamPanel | (892,52)–(1023,711) | 132×660 |
+| BottomBar | (0,712)–(1023,767) | 1024×56 |
+
+**WaveformPanel** (top to bottom, 132 px per row):
+
+| Widget | Coordinates | Content |
+|--------|-------------|---------|
+| EcgLead2Widget | (0,52)–(891,183) | ECG Lead II |
+| EcgLeadVWidget | (0,184)–(891,315) | ECG Lead V1 (default; lead switch planned) |
+| PrPlethWidget | (0,316)–(891,447) | PR pleth |
+| RespWaveWidget | (0,448)–(891,579) | Respiratory |
+| TempWaveWidget | (0,580)–(891,711) | Temperature waveform |
+
+**ParamPanel** (top to bottom, 132 px per row):
+
+| Widget | Coordinates | Content |
+|--------|-------------|---------|
+| HrParamRow | (892,52)–(1023,183) | HR |
+| NibpParamRow | (892,184)–(1023,315) | NIBP |
+| SpO2PrRow | (892,316)–(1023,447) | SpO2 (large) + PR (small) |
+| RespParamRow | (892,448)–(1023,579) | Resp rate |
+| TempParamRow | (892,580)–(1023,711) | Temp (display as °C float) |
+
+**BottomBar**: 8 equal slots (128 px each) — `[PageLeft][Admit/Discharge][Events][Review][Config][Sound][Standby][PageRight]`
 
 ### 4.2 Module Responsibilities
 
 | Module | Responsibility |
 |--------|----------------|
-| `NetworkReceiver` | TCP server, recv loop, push to `MessageQueue` |
+| `NetworkClient` | TCP connect, recv loop, push to `MessageQueue` |
 | `WaveformWidgets` | Ring buffer → QPainter polyline, 25 Hz refresh |
-| `ParamWidgets` | Numeric QLabel updates |
+| `ParamWidgets` | Numeric QLabel updates; temp display converts 0.1°C int → °C float |
 | `PhysAlarmEngine` | QTimer 1000 ms; compare numerics vs `AlarmLimits` |
-| `TechAlarmDisplay` | Parse `TechAlarmEvent`, show in top bar |
+| `TechAlarmDisplay` | Parse `TechAlarmEvent.repeated code`, localize message text |
 | `PatientManager` | Admit/discharge state machine |
 | `DataManager` | Append trend + alarm records |
 | `ConfigManager` | Load/save factory & user bins |
@@ -213,76 +256,119 @@ Evaluation rate: **1 Hz** (not per-sample).
 
 ```
 ┌────────────────┬─────────────────────────┐
-│ Length (BE u32)│ Protobuf message bytes  │
+│ Length (BE u32)│ Protobuf Envelope bytes │
 └────────────────┴─────────────────────────┘
 ```
 
 Max payload: 64 KB (configurable).
 
-### 5.2 Protobuf Schema (draft `monitor.proto`)
+### 5.2 Design Principles
+
+1. **Single timestamp**: `timestamp_ms` lives only in `Heartbeat`. Every `Envelope` carries a mandatory `heartbeat` field.
+2. **Optional payload**: Module data via `oneof payload`. Heartbeat-only frames use `Null`.
+3. **Module isolation**: Separate packet types (`EcgPacket`, `Spo2Packet`, etc.) mirror independent hardware parameter boards.
+4. **Localized tech alarms**: `TechAlarmEvent` carries `repeated Code` only; Host maps codes to display strings (i18n).
+
+### 5.3 Protobuf Schema (`common/proto/monitor.proto`)
 
 ```protobuf
 syntax = "proto3";
 package monitor;
 
-message WaveformPacket {
-  uint64 timestamp_ms = 1;
-  repeated int32 ecg_lead_ii = 2;   // e.g. 40 samples
-  repeated int32 ecg_lead_v = 3;
-  repeated int32 pr_pleth = 4;
-  repeated int32 resp_wave = 5;
-}
-
-message NumericParams {
-  uint64 timestamp_ms = 1;
-  uint32 hr = 2;
-  uint32 spo2 = 3;
-  uint32 pr = 4;
-  uint32 resp_rate = 5;
-  uint32 nibp_sys = 6;
-  uint32 nibp_dia = 7;
-  uint32 nibp_mean = 8;
-  float temperature = 9;
-}
-
-message TechAlarmEvent {
-  uint64 timestamp_ms = 1;
-  enum Code { LEAD_OFF = 0; MODULE_FAULT = 1; COMM_ERROR = 2; }
-  Code code = 2;
-  string message = 3;
-}
-
 message Heartbeat {
   uint64 timestamp_ms = 1;
 }
 
+message Null {}
+
+message EcgPacket {
+  uint32 hr = 1;
+  repeated int32 ecg_lead_i = 2;
+  repeated int32 ecg_lead_ii = 3;
+  repeated int32 ecg_lead_iii = 4;
+  repeated int32 ecg_lead_avr = 5;
+  repeated int32 ecg_lead_avl = 6;
+  repeated int32 ecg_lead_avf = 7;
+  repeated int32 ecg_lead_v1 = 8;
+  repeated int32 ecg_lead_v2 = 9;
+  repeated int32 ecg_lead_v3 = 10;
+  repeated int32 ecg_lead_v4 = 11;
+  repeated int32 ecg_lead_v5 = 12;
+  repeated int32 ecg_lead_v6 = 13;
+}
+
+message Spo2Packet {
+  uint32 spo2 = 1;
+  uint32 pr = 2;
+  repeated int32 pleth_wave = 3;
+}
+
+message RespPacket {
+  uint32 resp_rate = 1;
+  repeated int32 resp_wave = 2;
+}
+
+message TempPacket {
+  uint32 temperature = 1;  // unit: 0.1 deg C (365 = 36.5 C)
+  repeated int32 temp_wave = 2;
+}
+
+message NibpPacket {
+  uint32 nibp_sys = 1;
+  uint32 nibp_mean = 2;
+  uint32 nibp_dia = 3;
+}
+
+message TechAlarmEvent {
+  enum Code {
+    LEAD_OFF = 0;
+    MODULE_FAULT = 1;
+    COMM_ERROR = 2;
+    SENSOR_FAULT = 3;
+    EXCESSIVE_MOTION = 4;
+  }
+  repeated Code code = 1;
+}
+
 message Envelope {
+  Heartbeat heartbeat = 1;
   oneof payload {
-    WaveformPacket waveform = 1;
-    NumericParams numerics = 2;
-    TechAlarmEvent tech_alarm = 3;
-    Heartbeat heartbeat = 4;
+    Null null_payload = 2;
+    EcgPacket ecg = 3;
+    Spo2Packet spo2 = 4;
+    RespPacket resp = 5;
+    TempPacket temp = 6;
+    NibpPacket nibp = 7;
+    TechAlarmEvent tech_alarm = 8;
   }
 }
 ```
 
-### 5.3 Connection Sequence
+### 5.4 Connection Sequence
 
 ```mermaid
 sequenceDiagram
-    participant D as Device
-    participant H as Host
-    H->>H: tcp_listen_5000
-    D->>H: tcp_connect
+    participant D as Device_Server
+    participant H as Host_Client
+    D->>D: tcp_listen_5000
+    H->>D: tcp_connect
     loop every_40ms
-        D->>H: WaveformPacket
+        D->>H: Envelope(EcgPacket)
+        D->>H: Envelope(Spo2Packet)
+        D->>H: Envelope(RespPacket)
+        D->>H: Envelope(TempPacket)
+    end
+    loop every_30s
+        D->>H: Envelope(NibpPacket)
     end
     loop every_1s
-        D->>H: NumericParams
-        D->>H: Heartbeat
+        D->>H: Envelope(Null) heartbeat only
     end
+    Note over D,H: TechAlarmEvent sent on fault
     H->>H: PhysAlarm_1Hz_check
 ```
+
+**Startup order:** Start **Device** first (server), then **Host** (client).
 
 ---
 
@@ -313,10 +399,10 @@ flowchart LR
     end
     Common --> DevExe
     Common --> HostExe
-    DevExe --> WinPC[Windows_PC_Phase1]
-    HostExe --> WinPC
-    DevExe --> STM32[STM32_Phase2]
-    HostExe --> ArmLinux[ArmLinux_Phase2]
+    DevExe --> WinLinux[Windows_Linux_x86_Phase1]
+    HostExe --> WinLinux
+    DevExe --> STM32[STM32_FreeRTOS_Phase2]
+    HostExe --> AM3358[AM3358_ArmLinux_Phase2]
 ```
 
 ---
@@ -336,4 +422,15 @@ flowchart LR
 | AR-01 | NIBP measurement cycle timing | M2 |
 | AR-02 | Waveform ring buffer size vs 25 Hz | M2 |
 | AR-03 | Patient merge semantics | M4 |
-| AR-04 | FreeRTOS LwIP buffer counts | M7 |
+| AR-04 | ECG lead switch UI | Post-MVP |
+| AR-05 | FreeRTOS LwIP buffer counts | M7 |
+| AR-06 | AM3358 Qt6 cross-compile toolchain | M8 |
+
+---
+
+## 10. Change History
+
+| Version | Date | Change |
+|---------|------|--------|
+| 0.1 | 2026-06-20 | Initial architecture |
+| 0.2 | 2026-06-21 | Comment/05: two-phase plan, Device=Server, module packets, pixel UI, 12-lead ECG |

@@ -1,8 +1,8 @@
 # Risk Analysis (ISO 14971 Style)
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.1  
-**Date:** 2026-06-20  
+**Version:** 0.2  
+**Date:** 2026-06-21  
 **Scope:** Demonstration software — not for clinical use
 
 > This analysis supports portfolio documentation of risk-aware MedTech software practices.  
@@ -34,11 +34,11 @@
 |---------|--------|-----|------|-------------------|----------|
 | R-01 | H-01 + H-06 | 5 | D | README/SRS/UI watermark **DEMO ONLY**; synthetic data labeled; no clinical claims | Low |
 | R-02 | H-02 phys alarm | 4 | C | Unit tests for `PhysAlarmEngine`; 1 Hz timer audit; integration test HR>limit | Low |
-| R-03 | H-02 tech alarm | 3 | C | Integration test Device→Host tech alarm path | Low |
+| R-03 | H-02 tech alarm | 3 | C | Integration test Device→Host tech alarm path; Host localizes `repeated Code` | Low |
 | R-04 | H-03 config | 3 | D | Factory reset; config checksum in protobuf; validation ranges on save | Low |
 | R-05 | H-04 data | 2 | C | Append-only with length prefix; file flush; export verification test | Low |
 | R-06 | H-05 patient | 3 | D | Single active patient in MVP; admit dialog confirms name/bed | Low |
-| R-07 | H-07 network | 3 | E | Phase 1 localhost only; framing length check; discard malformed packets | Low |
+| R-07 | H-07 network | 3 | E | Phase 1 localhost only; Device=Server role; framing length check; discard malformed packets | Low |
 | R-08 | H-08 watchdog | 3 | E | Phase 2: IWDG + reset reason log (FR-NFR-03) | Low |
 
 ---
@@ -84,4 +84,13 @@ After controls, **all identified risks are acceptable for demonstration/portfoli
 | Initial | SRS approval (this document) |
 | M3 complete | Alarm module integrated |
 | M6 complete | Pre-demo release |
-| Phase 2 MCU | Watchdog + hardware hazards added |
+| Phase 2 MCU | Watchdog + hardware hazards added (STM32 + AM3358) |
+
+---
+
+## 7. Change History
+
+| Version | Date | Change |
+|---------|------|--------|
+| 0.1 | 2026-06-20 | Initial risk analysis |
+| 0.2 | 2026-06-21 | Comment/05: Device=Server, localized tech alarms, AM3358 phase 2 |

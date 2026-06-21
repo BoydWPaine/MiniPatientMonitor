@@ -1,0 +1,73 @@
+syntax = "proto3";
+package monitor;
+
+// Timestamp lives only in Heartbeat. Envelope always carries heartbeat;
+// optional payload via oneof. Use Null when heartbeat-only.
+
+message Heartbeat {
+  uint64 timestamp_ms = 1;
+}
+
+message Null {}
+
+message EcgPacket {
+  uint32 hr = 1;
+  repeated int32 ecg_lead_i = 2;
+  repeated int32 ecg_lead_ii = 3;
+  repeated int32 ecg_lead_iii = 4;
+  repeated int32 ecg_lead_avr = 5;
+  repeated int32 ecg_lead_avl = 6;
+  repeated int32 ecg_lead_avf = 7;
+  repeated int32 ecg_lead_v1 = 8;
+  repeated int32 ecg_lead_v2 = 9;
+  repeated int32 ecg_lead_v3 = 10;
+  repeated int32 ecg_lead_v4 = 11;
+  repeated int32 ecg_lead_v5 = 12;
+  repeated int32 ecg_lead_v6 = 13;
+}
+
+message Spo2Packet {
+  uint32 spo2 = 1;
+  uint32 pr = 2;
+  repeated int32 pleth_wave = 3;
+}
+
+message RespPacket {
+  uint32 resp_rate = 1;
+  repeated int32 resp_wave = 2;
+}
+
+message TempPacket {
+  uint32 temperature = 1;  // unit: 0.1 deg C (365 = 36.5 C)
+  repeated int32 temp_wave = 2;
+}
+
+message NibpPacket {
+  uint32 nibp_sys = 1;
+  uint32 nibp_mean = 2;
+  uint32 nibp_dia = 3;
+}
+
+message TechAlarmEvent {
+  enum Code {
+    LEAD_OFF = 0;
+    MODULE_FAULT = 1;
+    COMM_ERROR = 2;
+    SENSOR_FAULT = 3;
+    EXCESSIVE_MOTION = 4;
+  }
+  repeated Code code = 1;
+}
+
+message Envelope {
+  Heartbeat heartbeat = 1;
+  oneof payload {
+    Null null_payload = 2;
+    EcgPacket ecg = 3;
+    Spo2Packet spo2 = 4;
+    RespPacket resp = 5;
+    TempPacket temp = 6;
+    NibpPacket nibp = 7;
+    TechAlarmEvent tech_alarm = 8;
+  }
+}
