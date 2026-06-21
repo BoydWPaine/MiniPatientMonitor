@@ -1,7 +1,7 @@
 # Test Plan
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.2  
+**Version:** 0.3  
 **Date:** 2026-06-21
 
 ---
@@ -34,7 +34,8 @@ Define verification activities for MiniPatientMonitor demonstration software per
 | ID | Description | Requirement |
 |----|-------------|-------------|
 | TC-UT-10 | Encode/decode `EcgPacket` in `Envelope` round-trip | FR-C02 |
-| TC-UT-11 | Encode/decode `Spo2Packet`, `RespPacket`, `TempPacket`, `NibpPacket` round-trip | FR-C02 |
+| TC-UT-11 | Encode/decode `Spo2Packet`, `RespPacket`, `TempPacket`, `NibpPacket`, `NibpRequest` round-trip | FR-C02 |
+| TC-UT-16 | Waveform sample int32 within ±2048; 1 sample per packet at 25 Hz | FR-D02 |
 | TC-UT-12 | Reject oversize length prefix | FR-C02 |
 | TC-UT-13 | `TechAlarmEvent` repeated codes serialize; no message field | FR-D04 |
 | TC-UT-14 | `Envelope` with `NullPacket` payload (heartbeat-only) round-trip | FR-D05 |
@@ -62,7 +63,8 @@ Define verification activities for MiniPatientMonitor demonstration software per
 | ID | Description | Requirement |
 |----|-------------|-------------|
 | TC-UT-40 | ECG 12-lead buffer length matches sample rate | FR-D02 |
-| TC-UT-41 | HR config change updates `EcgPacket.hr` | FR-D03 |
+| TC-UT-41 | LVGL param change updates packets; randomization stops for edited params | FR-D03 |
+| TC-UT-43 | NIBP MAP = (SYS + 2×DIA) / 3 on `NibpPacket` response | FR-D02 |
 | TC-UT-42 | Independent module sims emit separate packet types | FR-D02 |
 
 ---
@@ -73,7 +75,8 @@ Define verification activities for MiniPatientMonitor demonstration software per
 |----|----------|-------|----------|-------------|
 | TC-IT-01 | TCP connect | Start Device (server), start Host (client) | Connected ≤5 s | FR-D01 |
 | TC-IT-02 | Waveform stream | Run 10 s | Host receives ≥250 Ecg/Spo2/Resp/Temp packets | NFR-01 |
-| TC-IT-03 | Numeric stream | Run 5 s | HR/SpO2/NIBP/Temp displayed | FR-H04 |
+| TC-IT-03 | Numeric stream | Run 5 s | HR/SpO2/Temp displayed; NIBP after Host `NibpRequest` | FR-H04 |
+| TC-IT-10 | NIBP manual + STAT | Manual request → values; STAT timer (300 s default) auto-requests | FR-D02 |
 | TC-IT-04 | HR alarm demo | Set HR=148, limit=120 | Phys alarm text visible | FR-H06 |
 | TC-IT-05 | Tech alarm | Inject LEAD_OFF on Device | Tech alarm area shows localized text | FR-H07 |
 | TC-IT-06 | Disconnect/reconnect | Kill Device, restart | Host reconnects ≤10 s | FR-D05 |
@@ -93,7 +96,9 @@ Define verification activities for MiniPatientMonitor demonstration software per
 | TC-SYS-04 | Param order HR/NIBP/SpO2+PR/Resp/Temp | Visual check | FR-H04 |
 | TC-SYS-05 | Bottom 8 slots (6 function + page buttons) | Each dialog functional | FR-H05 |
 | TC-SYS-06 | DEMO ONLY watermark | Visible on main screen | R-01 |
-| TC-SYS-07 | Device LVGL change HR | Host updates within 2 s | FR-D03 |
+| TC-SYS-07 | Device LVGL change any param | Host updates within 2 s; no random after edit | FR-D03 |
+| TC-SYS-12 | UI colors | Black bg; channel colors per Architecture §4.1.1 | FR-H04 |
+| TC-SYS-13 | Ring buffer | 3 s visible trace (120 samples) continuous | FR-H03 |
 | TC-SYS-08 | Data review shows trend | After 1 min run, data present | FR-H08 |
 | TC-SYS-09 | Export patient data | File created on disk | FR-H10 |
 | TC-SYS-10 | Factory reset | User config cleared | FR-H09 |
@@ -139,4 +144,5 @@ See [TraceabilityMatrix.md](TraceabilityMatrix.md).
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1 | 2026-06-20 | Initial test plan |
-| 0.2 | 2026-06-21 | Comment/05: Device=Server, module packets, 5-waveform UI, new TCs |
+| 0.2 | 2026-06-21 | Comment/05 Adjust01: Device=Server, module packets, 5-waveform UI |
+| 0.3 | 2026-06-21 | Comment/05 Adjust02: NibpRequest, colors, LVGL ranges, STAT |

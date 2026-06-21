@@ -20,17 +20,28 @@ Dual-process architecture simulating a real patient monitor system:
 | **SpO2** | Pleth waveform | SpO2, PR |
 | **Resp** | Respiratory waveform | Resp rate |
 | **Temp** | Temperature waveform | Temp (0.1°C integer, displayed as °C) |
-| **NIBP** | — | Sys / Mean / Dia |
+| **NIBP** | — | Sys / Mean / Dia (Host `NibpRequest`; manual + STAT on Host) |
 
 ### Key Features
 
 - TCP + Protobuf communication (`Envelope` with mandatory `Heartbeat` + module `oneof payload`)
 - Cross-platform **OS Abstraction Layer** (Windows / Linux / FreeRTOS / ArmLinux)
-- Physiological alarming (1 Hz limit check) + technical alarms from Device
-- Binary file storage (no database) — simulates EEPROM/FLASH
-- Qt6 Host UI at **1024×768** with pixel-defined layout (892:132 waveform:param ratio)
-- LVGL Device configuration UI (e.g. change HR default 72 → 148 to trigger alarm demo)
+- Physiological alarming (1 Hz limit check) + technical alarms from Device *(M3)*
+- Binary file storage (no database) — simulates EEPROM/FLASH *(M4)*
+- Qt6 Host UI at **1024×768** *(M2)*
+- LVGL Device configuration UI — all numeric params adjustable *(M2)*
+- Bidirectional TCP: Host sends `NibpRequest` for NIBP measure *(M2)*
 - IEC 62304-style documentation in `docs/`
+
+## Current Status
+
+| Milestone | Status |
+|-----------|--------|
+| **M1** — CMake + OSAL + Protobuf + TCP (Device Server) | **Done** |
+| M2 — Five module sims + Host 5-waveform UI | Planned |
+| M3 — Alarms + TopBar | Planned |
+
+M1 delivers console `mini_device` / `mini_host` with heartbeat (`NullPacket`) over TCP. See [docs/DevSetup.md](docs/DevSetup.md) for full setup.
 
 ## Architecture
 
@@ -52,48 +63,65 @@ See [docs/Architecture.md](docs/Architecture.md) for full design.
 
 ```
 MiniPatientMonitor/
-├── common/osal/          # OS abstraction (Windows + Linux first)
-├── common/proto/         # monitor.proto (v0.2)
-├── common/storage/       # Binary file I/O
-├── device/               # Parameter module simulator (TCP server)
-├── host/                 # Monitor main application (TCP client)
-├── docs/                 # SRS, architecture, risk, test docs
+├── build.sh              # One-click configure + build
+├── tools_install.sh      # Linux M1 dependency installer
+├── common/osal/          # OS abstraction (Windows + Linux)
+├── common/proto/         # monitor.proto + frame encoder
+├── device/               # TCP server (parameter simulator)
+├── host/                 # TCP client (monitor app)
+├── docs/                 # SRS, architecture, DevSetup, tests
 └── .github/workflows/    # CI (planned M5)
 ```
 
-## Prerequisites (Phase 1 — x86)
+## Quick Start
 
-| Tool | Version |
-|------|---------|
-| CMake | ≥ 3.20 |
-| MSVC or MinGW / GCC | C++17 |
-| Qt6 | ≥ 6.5 (Widgets, Network) |
-| Protobuf | ≥ 3.21 |
-| LVGL + SDL2 | ≥ 9.0 / 2.28 |
-| Google Test | ≥ 1.14 (optional, for tests) |
+**Full prerequisites and platform-specific steps:** [docs/DevSetup.md](docs/DevSetup.md)
 
-## Build (planned, M1)
+### Linux (M1)
 
 ```bash
 git clone https://github.com/BoydWPaine/MiniPatientMonitor.git
 cd MiniPatientMonitor
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-cmake --build build
+
+./tools_install.sh    # cmake, g++, git, zlib, protobuf dev
+./build.sh debug      # builds mini_device + mini_host
 ```
 
-Run (two terminals — **Device first**, then Host):
+### Run (two terminals — Device first)
 
 ```bash
-./build/device/mini_device      # starts TCP server on :5000
-./build/host/mini_host          # connects and displays vitals
+./build/device/mini_device    # TCP server on 127.0.0.1:5000
+./build/host/mini_host        # connects, receives heartbeat frames
 ```
 
-> Build scripts will be added in milestone M1. This repo currently contains **planning documentation and proto schema**.
+### Windows (M1)
+
+Visual Studio 2022 + Git + CMake. See [DevSetup.md §4](docs/DevSetup.md#4-windows--detailed-setup).
+
+```bat
+cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Debug
+```
+
+## Prerequisites Summary
+
+| Tool | M1 | M2+ | Install guide |
+|------|:--:|:---:|---------------|
+| CMake ≥ 3.20 | ✓ | | [DevSetup.md](docs/DevSetup.md) |
+| C++17 compiler | ✓ | | |
+| Git | ✓ | | |
+| Protobuf ≥ 3.21 | ✓* | | *Built via CMake FetchContent |
+| Qt6 ≥ 6.5 | | ✓ | DevSetup §3.2 / §4.2 |
+| LVGL + SDL2 | | ✓ | DevSetup §3.3 / §4.3 |
+| Google Test ≥ 1.14 | | | M5 — DevSetup §3.4 |
+
+`tools_install.sh` covers **M1 only**. Qt6, LVGL, and GTest require manual steps documented in DevSetup.
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
+| [DevSetup.md](docs/DevSetup.md) | **Developer environment setup** (Linux / Windows) |
 | [SRS.md](docs/SRS.md) | Software Requirements Specification |
 | [Architecture.md](docs/Architecture.md) | System & module design |
 | [RiskAnalysis.md](docs/RiskAnalysis.md) | ISO 14971-style risk table |
@@ -101,21 +129,21 @@ Run (two terminals — **Device first**, then Host):
 | [TestReport.md](docs/TestReport.md) | Test execution report (template) |
 | [TraceabilityMatrix.md](docs/TraceabilityMatrix.md) | Requirements ↔ tests |
 
-Chinese planning doc (iteration with AI):  
-`/home/walker/Desktop/GrokBuild/Job/Embedded/Project_MiniPatientMonitor/Project_MiniPatientMonitor.md`
+Chinese planning docs:  
+`/home/walker/Desktop/GrokBuild/Job/Embedded/Project_MiniPatientMonitor/`
 
 ## Development Roadmap
 
 ### Phase 1 — Application Layer (x86, Windows + Linux)
 
-| Milestone | Goal |
-|-----------|------|
-| M1 | CMake + OSAL(Win/Linux) + Protobuf + TCP (Device Server) |
-| M2 | Five independent module sims + Host 5-waveform UI |
-| M3 | Physiological + technical alarms |
-| M4 | Patient / data / config persistence |
-| M5 | Unit tests + CI |
-| M6 | Demo video + doc finalization |
+| Milestone | Goal | Status |
+|-----------|------|--------|
+| M1 | CMake + OSAL(Win/Linux) + Protobuf + TCP (Device Server) | **Done** |
+| M2 | Five independent module sims + Host 5-waveform UI | |
+| M3 | Physiological + technical alarms | |
+| M4 | Patient / data / config persistence | |
+| M5 | Unit tests + CI | |
+| M6 | Demo video + doc finalization | |
 
 ### Phase 2 — Hardware Integration
 

@@ -1,7 +1,7 @@
 # Requirements Traceability Matrix
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.2  
+**Version:** 0.3  
 **Date:** 2026-06-21
 
 Maps SRS requirements → verification test cases.
@@ -13,8 +13,8 @@ Maps SRS requirements → verification test cases.
 | Req ID | Requirement Summary | Test Cases | Status |
 |--------|---------------------|------------|--------|
 | FR-D01 | TCP server; Host connects | TC-UT-04, TC-IT-01, TC-IT-06 | Planned |
-| FR-D02 | Five independent module sims; 12-lead ECG | TC-UT-40, TC-UT-42, TC-IT-02, TC-IT-03, TC-IT-09, TC-SYS-03 | Planned |
-| FR-D03 | LVGL config UI | TC-UT-41, TC-SYS-07 | Planned |
+| FR-D02 | Five independent module sims; 12-lead ECG; NIBP on-demand | TC-UT-16, TC-UT-40, TC-UT-42, TC-UT-43, TC-IT-02, TC-IT-03, TC-IT-09, TC-IT-10, TC-SYS-03 | Planned |
+| FR-D03 | LVGL all params (ranges) | TC-UT-41, TC-SYS-07 | Planned |
 | FR-D04 | Technical alarms (repeated Code) | TC-UT-13, TC-IT-05 | Planned |
 | FR-D05 | Heartbeat (NullPacket payload) / reconnect | TC-UT-14, TC-IT-06 | Planned |
 
@@ -25,7 +25,7 @@ Maps SRS requirements → verification test cases.
 | FR-H01 | 1024×768 pixel layout (892:132) | TC-SYS-01 | Planned |
 | FR-H02 | Top status bar (188/300/52/300/188) | TC-SYS-02 | Planned |
 | FR-H03 | Five waveform rows incl. Temp | TC-SYS-03, TC-IT-02 | Planned |
-| FR-H04 | Param order + association rules | TC-SYS-04, TC-SYS-11, TC-IT-03 | Planned |
+| FR-H04 | Param order + colors + association | TC-SYS-04, TC-SYS-11, TC-SYS-12, TC-SYS-13, TC-IT-03 | Planned |
 | FR-H05 | Bottom 8-slot bar | TC-SYS-05 | Planned |
 | FR-H06 | Physiological alarming 1Hz | TC-UT-20..23, TC-IT-04 | Planned |
 | FR-H07 | Technical alarm display (localized) | TC-IT-05 | Planned |
@@ -38,7 +38,7 @@ Maps SRS requirements → verification test cases.
 | Req ID | Requirement Summary | Test Cases | Status |
 |--------|---------------------|------------|--------|
 | FR-C01 | OS abstraction layer (Win/Linux) | TC-UT-01..04 | Planned |
-| FR-C02 | Protobuf module packets in Envelope | TC-UT-10..15 | Planned |
+| FR-C02 | Protobuf module packets + NibpRequest | TC-UT-10..16 | Planned |
 | FR-C03 | Binary file storage | TC-UT-30..32 | Planned |
 
 ## Non-Functional Requirements
@@ -82,4 +82,5 @@ Maps SRS requirements → verification test cases.
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1 | 2026-06-20 | Initial matrix |
-| 0.2 | 2026-06-21 | Comment/05: updated test mappings, new TC-UT-14/15/42, TC-IT-09, TC-SYS-11 |
+| 0.2 | 2026-06-21 | Comment/05 Adjust01: updated test mappings |
+| 0.3 | 2026-06-21 | Comment/05 Adjust02: NibpRequest, colors, TC-IT-10, TC-SYS-12/13 |

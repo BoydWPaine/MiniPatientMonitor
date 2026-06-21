@@ -1,7 +1,7 @@
 # Architecture Design Document
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.2  
+**Version:** 0.3  
 **Date:** 2026-06-21
 
 ---
@@ -143,11 +143,11 @@ Each vital-sign channel is simulated by an **independent module** that emits its
 | `Spo2ModuleSim` | `device/src/spo2_sim.cpp` | `Spo2Packet` | SpO2, PR, pleth waveform |
 | `RespModuleSim` | `device/src/resp_sim.cpp` | `RespPacket` | Resp rate + resp waveform |
 | `TempModuleSim` | `device/src/temp_sim.cpp` | `TempPacket` | Temperature (0.1°C int) + temp wave |
-| `NibpModuleSim` | `device/src/nibp_sim.cpp` | `NibpPacket` | Sys/Mean/Dia (periodic cycle) |
+| `NibpModuleSim` | `device/src/nibp_sim.cpp` | `NibpPacket` | On-demand Sys/Mean/Dia when `NibpRequest` received |
 | `TechAlarmGen` | `device/src/tech_alarm.cpp` | `TechAlarmEvent` | Inject LEAD_OFF, MODULE_FAULT, etc. |
-| `LVGL_ConfigUI` | `device/ui/config_ui.c` | — | Edit HR, SpO2, limits for demo |
+| `LVGL_ConfigUI` | `device/ui/config_ui.c` | — | Edit all numeric parameters (waveforms not editable) |
 | `ProtocolEncoder` | `common/proto/encoder.cpp` | `Envelope` | Serialize Protobuf + length prefix |
-| `NetServer` | `device/src/net_server.cpp` | — | TCP listen/accept, send loop |
+| `NetServer` | `device/src/net_server.cpp` | — | TCP listen/accept; send vitals; recv `NibpRequest` |
 
 ### 3.2 Task Model (FreeRTOS / Windows / Linux threads)
 
@@ -157,19 +157,38 @@ Each vital-sign channel is simulated by an **independent module** that emits its
 | Spo2Task | High (3) | 40 ms | 2 KB |
 | RespTask | Normal (2) | 40 ms | 2 KB |
 | TempTask | Normal (2) | 40 ms | 2 KB |
-| NibpTask | Low (1) | 30 s (demo cycle) | 1 KB |
 | NetTask | Normal (2) | event | 4 KB |
 | UITask | Low (1) | 50 ms | 4 KB |
 | AlarmTask | Normal (2) | 1000 ms | 1 KB |
 
-### 3.3 Parameter Simulation (simplified)
+### 3.3 Waveform & Sampling Constants (M2)
 
-- **ECG**: 12 leads (I, II, III, aVR, aVL, aVF, V1–V6); sum of sine waves ~1 Hz + harmonics; UI defaults to Lead II + V1
-- **HR**: derived from R-R interval or configured default (72 bpm)
-- **SpO2/PR**: pleth sine modulated by HR
-- **Resp**: slower sine ~0.2 Hz
-- **NIBP**: periodic measurement cycle (demo: static 120/80/93)
-- **Temp**: slow drift around 36.5 °C (365 in 0.1°C units) + temp waveform
+| Constant | Value |
+|----------|-------|
+| Sample rate | 25 Hz (40 ms period) |
+| Samples per packet | 1 × `int32` per waveform field |
+| Amplitude full scale | ±2048 (normalized, unified across all waveforms) |
+| Ring buffer capacity | 120 samples (3 s at 25 Hz) |
+
+Ring buffer rationale: HR/PR demo = 60 bpm → 3 s holds 3 complete ECG/pleth cycles; Resp demo = 20 /min → 3 s holds 1 complete resp cycle.
+
+### 3.4 Parameter Simulation Defaults
+
+Until changed via LVGL, Device uses these demo values (random where noted):
+
+| Parameter | Default / rule |
+|-----------|----------------|
+| HR | 60 bpm |
+| PR | 60 bpm |
+| SpO2 | random in [97, 99] % |
+| Resp rate | 20 /min |
+| Temp | random in [362, 368] (0.1°C units, i.e. 36.2–36.8°C) |
+| NIBP | **not streamed**; on `NibpRequest`: SYS random [120,128], DIA random [76,84], MAP = (SYS + 2×DIA) / 3 |
+
+After LVGL edits, parameters use **fixed configured values** (no further randomization). Waveforms are never user-adjustable.
+
+- **ECG**: 12 leads generated; Host UI shows Lead II + V1 only; Host storage retains all 12 leads (M4)
+- **Waveforms**: derived from configured HR/PR/Resp; unified ±2048 scaling
 
 ---
 
@@ -211,17 +230,30 @@ Each vital-sign channel is simulated by an **independent module** that emits its
 
 **BottomBar**: 8 equal slots (128 px each) — `[PageLeft][Admit/Discharge][Events][Review][Config][Sound][Standby][PageRight]`
 
+### 4.1.1 Colors (waveform + parameter areas)
+
+| Region | RGB | Notes |
+|--------|-----|-------|
+| WaveformPanel + ParamPanel background | black `(0,0,0)` | |
+| Row/column separator | `(128,128,128)` | 1 px between parameter rows |
+| HR + ECG waveforms | `(9,78,22)` | |
+| SpO2 + PR (param + pleth) | `(9,68,58)` | |
+| Resp (param + wave) | `(98,80,4)` | |
+| Temp (param + wave) | `(255,255,255)` | |
+| NIBP (param only) | `(94,94,94)` | no waveform row |
+
 ### 4.2 Module Responsibilities
 
 | Module | Responsibility |
 |--------|----------------|
-| `NetworkClient` | TCP connect, recv loop, push to `MessageQueue` |
-| `WaveformWidgets` | Ring buffer → QPainter polyline, 25 Hz refresh |
+| `NetworkClient` | TCP connect; bidirectional `read_frame` / `write_frame`; push Device→Host messages to queue |
+| `NibpController` | Host app layer: manual measure trigger + STAT timer (default 5 min, configurable); sends `NibpRequest` |
+| `WaveformWidgets` | 120-sample ring buffer → QPainter polyline, 25 Hz refresh |
 | `ParamWidgets` | Numeric QLabel updates; temp display converts 0.1°C int → °C float |
 | `PhysAlarmEngine` | QTimer 1000 ms; compare numerics vs `AlarmLimits` |
 | `TechAlarmDisplay` | Parse `TechAlarmEvent.repeated code`, localize message text |
 | `PatientManager` | Admit/discharge state machine |
-| `DataManager` | Append trend + alarm records |
+| `DataManager` | Append trend + alarm records; **store all 12 ECG leads** for review/export/merge (M4) |
 | `ConfigManager` | Load/save factory & user bins |
 
 ### 4.3 Physiological Alarm State Machine
@@ -268,6 +300,7 @@ Max payload: 64 KB (configurable).
 2. **Optional payload**: Module data via `oneof payload`. Heartbeat-only frames use `NullPacket` (empty message; valid in proto3).
 3. **Module isolation**: Separate packet types (`EcgPacket`, `Spo2Packet`, etc.) mirror independent hardware parameter boards.
 4. **Localized tech alarms**: `TechAlarmEvent` carries `repeated Code` only; Host maps codes to display strings (i18n).
+5. **Bidirectional TCP**: Same socket uses length-prefixed `Envelope` in both directions. Device→Host: vitals + alarms. Host→Device: `NibpRequest` only (empty message — start one measurement). Manual vs STAT scheduling is **Host application logic only**.
 
 ### 5.3 Protobuf Schema (`common/proto/monitor.proto`)
 
@@ -313,6 +346,8 @@ message TempPacket {
   repeated int32 temp_wave = 2;
 }
 
+message NibpRequest {}  // Host -> Device: start measurement
+
 message NibpPacket {
   uint32 nibp_sys = 1;
   uint32 nibp_mean = 2;
@@ -340,6 +375,7 @@ message Envelope {
     TempPacket temp = 6;
     NibpPacket nibp = 7;
     TechAlarmEvent tech_alarm = 8;
+    NibpRequest nibp_request = 9;  // Host -> Device only
   }
 }
 ```
@@ -358,15 +394,21 @@ sequenceDiagram
         D->>H: Envelope(RespPacket)
         D->>H: Envelope(TempPacket)
     end
-    loop every_30s
-        D->>H: Envelope(NibpPacket)
-    end
     loop every_1s
-        D->>H: Envelope(NullPacket) heartbeat only
+        D->>H: Envelope(NullPacket)
     end
-    Note over D,H: TechAlarmEvent sent on fault
+    Note over H: STAT timer or user triggers measure
+    H->>D: Envelope(NibpRequest)
+    D->>H: Envelope(NibpPacket)
+    Note over D,H: TechAlarmEvent on fault
     H->>H: PhysAlarm_1Hz_check
 ```
+
+**NIBP modes (Host only):**
+- **Manual**: user action sends one `NibpRequest`
+- **STAT**: Host timer (default 300 s, configurable) sends `NibpRequest` periodically
+
+Device does not auto-push NIBP; no traffic unless Host requests.
 
 **Startup order:** Start **Device** first (server), then **Host** (client).
 
@@ -385,6 +427,8 @@ No database. Protobuf-serialized records appended to binary files.
 | `data/{uuid}/alarms.bin` | repeated `AlarmRecord` | DataManager |
 
 `AlarmRecord` fields: timestamp, type (phys/tech), parameter, value, upper_limit, lower_limit.
+
+**ECG trend storage (M4):** `TrendRecord` shall persist **all 12 leads** per sample epoch, not only II/V1, so data review, export, and merge operate on complete lead sets.
 
 ---
 
@@ -419,8 +463,8 @@ flowchart LR
 
 | ID | Issue | Resolution Target |
 |----|-------|-------------------|
-| AR-01 | NIBP measurement cycle timing | M2 |
-| AR-02 | Waveform ring buffer size vs 25 Hz | M2 |
+| AR-01 | ~~NIBP measurement~~ | **Closed** — Host `NibpRequest`, STAT default 5 min |
+| AR-02 | ~~Ring buffer size~~ | **Closed** — 120 samples (3 s) |
 | AR-03 | Patient merge semantics | M4 |
 | AR-04 | ECG lead switch UI | Post-MVP |
 | AR-05 | FreeRTOS LwIP buffer counts | M7 |
@@ -433,4 +477,5 @@ flowchart LR
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1 | 2026-06-20 | Initial architecture |
-| 0.2 | 2026-06-21 | Comment/05: two-phase plan, Device=Server, module packets, pixel UI, 12-lead ECG |
+| 0.2 | 2026-06-21 | Comment/05 Adjust01: two-phase plan, Device=Server, module packets, pixel UI, 12-lead ECG |
+| 0.3 | 2026-06-21 | Comment/05 Adjust02: M2 sampling/colors, bidirectional NibpRequest, LVGL all params |

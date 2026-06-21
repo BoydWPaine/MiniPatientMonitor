@@ -1,7 +1,7 @@
 # Software Requirements Specification (SRS)
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.2  
+**Version:** 0.3  
 **Date:** 2026-06-21  
 **Status:** Draft  
 **Safety Class (IEC 62304):** Not applicable — demonstration software, not for clinical use
@@ -42,7 +42,7 @@ This document specifies software requirements for MiniPatientMonitor, a six-para
 - IEC 62304 (informative — documentation style only)
 - ISO 14971 (informative — risk analysis)
 - Project plan: `Project_MiniPatientMonitor.md`
-- Design adjustment: Comment/05.ProjectAdjust01.txt
+- Design adjustment: Comment/05.ProjectAdjust01.txt, Comment/05.ProjectAdjust02.txt
 
 ---
 
@@ -87,21 +87,38 @@ flowchart LR
 | SpO2 | `Spo2Packet` | Plethysmograph | SpO2 (%), PR (bpm) |
 | Resp | `RespPacket` | Respiratory wave | Resp rate (/min) |
 | Temp | `TempPacket` | Temperature wave | Temperature (0.1°C integer; 365 = 36.5°C) |
-| NIBP | `NibpPacket` | — | Sys/Mean/Dia (mmHg) |
+| NIBP | `NibpPacket` | — | Sys/Mean/Dia (mmHg); **on Host request only** |
+
+**Streaming modules** (Device→Host, 25 Hz, 1 sample/packet, ±2048): ECG, SpO2, Resp, Temp.
+
+**NIBP** is not streamed. Host sends `NibpRequest` (empty message); Device responds once with `NibpPacket`. Manual vs STAT timing is Host application logic (STAT default 5 min, configurable).
+
+**Demo defaults** (until LVGL override): HR=60, PR=60, SpO2∈[97,99], Resp=20, Temp∈[362,368] (0.1°C). NIBP on request: SYS∈[120,128], DIA∈[76,84], MAP=(SYS+2×DIA)/3.
 
 | Attribute | Value |
 |-----------|-------|
 | Priority | P0 |
-| Acceptance | All modules active; packets sent independently; HR default 72 bpm; Host UI defaults to ECG Lead II + V1; values within clinically plausible demo ranges |
+| Acceptance | Streaming modules at 25 Hz; HR default 60 bpm; Host UI shows Lead II + V1; all 12 leads stored by Host (M4); NIBP only after `NibpRequest` |
 
 ### FR-D03 Configuration UI (LVGL)
 
-**Description:** Device shall provide a local UI to modify default parameter values (e.g. HR 72 → 148).
+**Description:** Device shall provide a local UI to modify **numeric parameters only** (waveforms not editable). Once set, values are transmitted fixed (no randomization).
+
+| Parameter | Allowed range |
+|-----------|---------------|
+| HR | [38, 188] bpm |
+| PR | [38, 188] bpm |
+| SpO2 | [50, 99] % |
+| Resp rate | [6, 38] /min |
+| Temp | [288, 420] (0.1°C) |
+| SYS | (84, 180] mmHg |
+| DIA | [50, 84] mmHg |
+| MAP | computed from SYS/DIA (not directly editable) |
 
 | Attribute | Value |
 |-----------|-------|
 | Priority | P0 |
-| Acceptance | Changed value reflected in next module packet (e.g. `EcgPacket.hr`) |
+| Acceptance | Changed values reflected in next module packets; random generation stops for edited parameters |
 
 ### FR-D04 Technical Alarms
 
@@ -181,6 +198,10 @@ Top to bottom:
 | 4 | Resp | Resp wave | Linked numeric |
 | 5 | Temp | Temp wave | Display as °C float; stored/transmitted as 0.1°C integer |
 
+**Colors:** black background; 1 px gray `(128,128,128)` separators between param rows; HR+ECG `(9,78,22)`; SpO2+PR `(9,68,58)`; Resp `(98,80,4)`; Temp `(255,255,255)`; NIBP `(94,94,94)`.
+
+**Ring buffer:** 120 samples (3 s) per waveform channel.
+
 | Attribute | Value |
 |-----------|-------|
 | Priority | P0 |
@@ -216,7 +237,7 @@ Middle 6 buttons open appropriate dialogs.
 
 ### FR-H08 Data Management
 
-**Description:** Host shall store waveforms, numerics, and alarm events indexed by patient.
+**Description:** Host shall store waveforms, numerics, and alarm events indexed by patient. ECG trend data shall include **all 12 leads** for review, export, and merge.
 
 Alarm record shall include: timestamp, alarm type, parameter value, configured limits.
 
@@ -300,6 +321,7 @@ Configuration and patient data shall use binary files (no SQL database), simulat
 | Host role | **Client** (connect) |
 | Default address | 127.0.0.1:5000 |
 | Framing | 4-byte big-endian length + Protobuf `Envelope` |
+| Direction | Bidirectional on same socket: Device→Host vitals/alarms; Host→Device `NibpRequest` |
 | Startup order | Device first, then Host |
 
 ### 7.2 User Interfaces
@@ -331,4 +353,5 @@ See [TraceabilityMatrix.md](TraceabilityMatrix.md) for FR → test case mapping.
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1 | 2026-06-20 | Initial SRS |
-| 0.2 | 2026-06-21 | Comment/05: phases, Device=Server, module packets, 12-lead ECG, pixel UI |
+| 0.2 | 2026-06-21 | Comment/05 Adjust01: phases, Device=Server, module packets, 12-lead ECG, pixel UI |
+| 0.3 | 2026-06-21 | Comment/05 Adjust02: M2 defaults, colors, NibpRequest, LVGL ranges, 120-sample buffer |

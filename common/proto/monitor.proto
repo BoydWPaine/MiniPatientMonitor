@@ -43,6 +43,9 @@ message TempPacket {
   repeated int32 temp_wave = 2;
 }
 
+// Host -> Device: start one NIBP measurement. Mode (manual / STAT) is Host-only.
+message NibpRequest {}
+
 message NibpPacket {
   uint32 nibp_sys = 1;
   uint32 nibp_mean = 2;
@@ -70,5 +73,6 @@ message Envelope {
     TempPacket temp = 6;
     NibpPacket nibp = 7;
     TechAlarmEvent tech_alarm = 8;
+    NibpRequest nibp_request = 9;  // Host -> Device only
   }
 }
