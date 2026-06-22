@@ -7,8 +7,8 @@
 namespace mpm::host {
 
 namespace {
-constexpr int kRowHeight = 132;
-constexpr int kPanelWidth = 132;
+constexpr int kRowHeight = 128;
+constexpr int kPanelWidth = 384;
 
 QWidget* makeSeparator(QWidget* parent)
 {

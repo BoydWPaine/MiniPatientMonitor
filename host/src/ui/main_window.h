@@ -5,6 +5,7 @@
 #include "nibp_controller.h"
 #include "net_thread.h"
 #include "ui/param_panel.h"
+#include "ui/top_bar.h"
 #include "ui/waveform_widget.h"
 
 #include <QMainWindow>

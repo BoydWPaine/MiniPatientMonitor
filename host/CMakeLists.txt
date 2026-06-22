@@ -9,6 +9,7 @@ add_executable(mini_host
     src/net_thread.cpp
     src/nibp_controller.cpp
     src/ui/main_window.cpp
+    src/ui/top_bar.cpp
     src/ui/waveform_widget.cpp
     src/ui/param_panel.cpp
 )

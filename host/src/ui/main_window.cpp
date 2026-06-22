@@ -2,9 +2,7 @@
 
 #include "monitor.pb.h"
 
-#include <QGridLayout>
 #include <QHBoxLayout>
-#include <QLabel>
 #include <QPushButton>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -15,10 +13,9 @@ namespace mpm::host {
 namespace {
 constexpr int kWindowWidth = 1024;
 constexpr int kWindowHeight = 768;
-constexpr int kTopBarHeight = 52;
-constexpr int kBottomBarHeight = 56;
-constexpr int kWaveformWidth = 892;
-constexpr int kRowHeight = 132;
+constexpr int kBottomBarHeight = 64;
+constexpr int kWaveformWidth = 640;
+constexpr int kRowHeight = 128;
 }  // namespace
 
 MainWindow::MainWindow(QWidget* parent)
@@ -38,11 +35,7 @@ MainWindow::MainWindow(QWidget* parent)
     root_layout->setContentsMargins(0, 0, 0, 0);
     root_layout->setSpacing(0);
 
-    auto* top_bar = new QLabel(QStringLiteral("DEMO ONLY"), central);
-    top_bar->setFixedHeight(kTopBarHeight);
-    top_bar->setAlignment(Qt::AlignCenter);
-    top_bar->setStyleSheet(QStringLiteral("color: rgb(128,128,128); background: black; font-size: 18px;"));
-    root_layout->addWidget(top_bar);
+    root_layout->addWidget(new TopBar(central));
 
     auto* body = new QHBoxLayout();
     body->setContentsMargins(0, 0, 0, 0);
@@ -80,24 +73,22 @@ MainWindow::MainWindow(QWidget* parent)
     bottom_layout->setSpacing(0);
 
     const QStringList labels = {
-        QStringLiteral("PageLeft"),
-        QStringLiteral("Admit"),
-        QStringLiteral("Events"),
-        QStringLiteral("Review"),
-        QStringLiteral("Config"),
-        QStringLiteral("Sound"),
-        QStringLiteral("Standby"),
-        QStringLiteral("PageRight"),
+        QStringLiteral("左翻页"),
+        QStringLiteral("接收/解除"),
+        QStringLiteral("事件"),
+        QStringLiteral("回顾"),
+        QStringLiteral("配置"),
+        QStringLiteral("声音"),
+        QStringLiteral("待机"),
+        QStringLiteral("右翻页"),
     };
 
-    for (int i = 0; i < labels.size(); ++i) {
-        auto* button = new QPushButton(labels[i], bottom_bar);
-        button->setFixedWidth(128);
-        button->setEnabled(labels[i] == QStringLiteral("Review"));
-        if (labels[i] == QStringLiteral("Review")) {
+    for (const QString& label : labels) {
+        auto* button = new QPushButton(label, bottom_bar);
+        button->setFixedSize(128, kBottomBarHeight);
+        button->setEnabled(label == QStringLiteral("回顾"));
+        if (label == QStringLiteral("回顾")) {
             connect(button, &QPushButton::clicked, this, &MainWindow::onManualNibpClicked);
-            button->setText(QStringLiteral("NIBP"));
-            button->setEnabled(true);
         }
         bottom_layout->addWidget(button);
     }
