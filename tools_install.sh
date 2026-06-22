@@ -23,6 +23,7 @@ Installs:
   - zlib development headers
   - protobuf-compiler + libprotobuf-dev (>= ${PROTOBUF_MIN_VERSION})
   - qt6-base-dev + libgl1-mesa-dev (Host Qt UI, M2)
+  - libsdl2-dev (Device LVGL UI, M2 — or use CMake FetchContent)
 
 Supported:
   - Debian / Ubuntu (apt)
@@ -80,10 +81,11 @@ install_debian_packages() {
         protobuf-compiler \
         libprotobuf-dev
 
-    echo "==> Installing M2 Host UI dependencies (Qt6 Widgets)"
+    echo "==> Installing M2 dependencies (Qt6 Host + SDL2 Device UI)"
     run_as_root apt-get install -y \
         qt6-base-dev \
-        libgl1-mesa-dev
+        libgl1-mesa-dev \
+        libsdl2-dev
 }
 
 verify_tools() {

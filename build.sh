@@ -33,6 +33,10 @@ Environment:
 Outputs:
   ${BUILD_DIR}/device/mini_device
   ${BUILD_DIR}/host/mini_host
+
+Device options:
+  --no-ui         Disable LVGL config window (headless/CI)
+  --disable-spo2  Disable SpO2 module (TC-IT-09)
 EOF
 }
 

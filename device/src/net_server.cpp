@@ -61,14 +61,16 @@ void handle_incoming(osal_socket_t client,
 
 }  // namespace
 
-int run_server(const char* host, uint16_t port, bool disable_spo2)
+int run_server(const char* host,
+               uint16_t port,
+               DeviceConfigStore& config_store,
+               bool disable_spo2)
 {
     if (!osal_tcp_init()) {
         std::fprintf(stderr, "[device] TCP init failed\n");
         return 1;
     }
 
-    DeviceConfigStore config_store;
     if (disable_spo2) {
         DeviceConfig cfg = config_store.snapshot();
         cfg.spo2_enabled = false;
