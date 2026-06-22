@@ -90,8 +90,8 @@ Define verification activities for MiniPatientMonitor demonstration software per
 
 | ID | Scenario | Expected | Requirement |
 |----|----------|----------|-------------|
-| TC-SYS-01 | Launch 1024×768 window | Layout matches pixel coordinates (892:132) | FR-H01 |
-| TC-SYS-02 | Top bar sections visible | All 5 regions at correct widths | FR-H02 |
+| TC-SYS-01 | Launch 1024×768 window | Layout matches pixel coordinates (640:384 waveform:param ratio) | FR-H01 |
+| TC-SYS-02 | Top bar sections visible | All 5 regions: 180/300/64/300/180 px widths, 64 px height | FR-H02 |
 | TC-SYS-03 | Five waveforms scrolling | ECG II/V1, PR, Resp, Temp animate | FR-H03 |
 | TC-SYS-04 | Param order HR/NIBP/SpO2+PR/Resp/Temp | Visual check | FR-H04 |
 | TC-SYS-05 | Bottom 8 slots (6 function + page buttons) | Each dialog functional | FR-H05 |

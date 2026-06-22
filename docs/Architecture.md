@@ -1,7 +1,7 @@
 # Architecture Design Document
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.3  
+**Version:** 0.4  
 **Date:** 2026-06-21
 
 ---
@@ -198,37 +198,46 @@ After LVGL edits, parameters use **fixed configured values** (no further randomi
 
 | Region | Coordinates | Size |
 |--------|-------------|------|
-| TopBar | (0,0)–(1023,51) | 1024×52 |
-| PatientInfo | (0,0)–(187,51) | 188×52 |
-| PhysAlarm | (188,0)–(487,51) | 300×52 |
-| Icons | (488,0)–(535,51) | 52×52 |
-| TechAlarm | (536,0)–(835,51) | 300×52 |
-| DateTime | (836,0)–(1023,51) | 188×52 |
-| WaveformPanel | (0,52)–(891,711) | 892×660 |
-| ParamPanel | (892,52)–(1023,711) | 132×660 |
-| BottomBar | (0,712)–(1023,767) | 1024×56 |
+| TopBar | (0,0)–(1023,63) | 1024×64 |
+| PatientInfo | (0,0)–(179,63) | 180×64 |
+| PhysAlarm | (180,0)–(479,63) | 300×64 |
+| Icons | (480,0)–(543,63) | 64×64 |
+| TechAlarm | (544,0)–(843,63) | 300×64 |
+| DateTime | (844,0)–(1023,63) | 180×64 |
+| WaveformPanel | (0,64)–(639,703) | 640×640 |
+| ParamPanel | (640,64)–(1023,703) | 384×640 |
+| BottomBar | (0,704)–(1023,767) | 1024×64 |
 
-**WaveformPanel** (top to bottom, 132 px per row):
+**TopBar demo placeholders (M2; alarm-linked in M3)** — CR-001 §3.1:
+
+| Sub-region | Demo text | Style |
+|------------|-----------|-------|
+| PatientInfo (name / bed) | `John McCarthy` / `ICU-1076` | white on black |
+| PhysAlarm | `Ventricular Tachycardia` | white on red |
+| TechAlarm | `Missing Leads` | black on yellow |
+| DateTime (date / time) | `June 30, 2026` / `09:59:47` | white on black |
+
+**WaveformPanel** (top to bottom, 128 px per row):
 
 | Widget | Coordinates | Content |
 |--------|-------------|---------|
-| EcgLead2Widget | (0,52)–(891,183) | ECG Lead II |
-| EcgLeadVWidget | (0,184)–(891,315) | ECG Lead V1 (default; lead switch planned) |
-| PrPlethWidget | (0,316)–(891,447) | PR pleth |
-| RespWaveWidget | (0,448)–(891,579) | Respiratory |
-| TempWaveWidget | (0,580)–(891,711) | Temperature waveform |
+| EcgLead2Widget | (0,64)–(639,191) | ECG Lead II |
+| EcgLeadVWidget | (0,192)–(639,319) | ECG Lead V1 (default; lead switch planned) |
+| PrPlethWidget | (0,320)–(639,447) | PR pleth |
+| RespWaveWidget | (0,448)–(639,575) | Respiratory |
+| TempWaveWidget | (0,576)–(639,703) | Temperature waveform |
 
-**ParamPanel** (top to bottom, 132 px per row):
+**ParamPanel** (top to bottom, 128 px per row):
 
 | Widget | Coordinates | Content |
 |--------|-------------|---------|
-| HrParamRow | (892,52)–(1023,183) | HR |
-| NibpParamRow | (892,184)–(1023,315) | NIBP |
-| SpO2PrRow | (892,316)–(1023,447) | SpO2 (large) + PR (small) |
-| RespParamRow | (892,448)–(1023,579) | Resp rate |
-| TempParamRow | (892,580)–(1023,711) | Temp (display as °C float) |
+| HrParamRow | (640,64)–(1023,191) | HR |
+| NibpParamRow | (640,192)–(1023,319) | NIBP |
+| SpO2PrRow | (640,320)–(1023,447) | SpO2 (large) + PR (small) |
+| RespParamRow | (640,448)–(1023,575) | Resp rate |
+| TempParamRow | (640,576)–(1023,703) | Temp (display as °C float) |
 
-**BottomBar**: 8 equal slots (128 px each) — `[PageLeft][Admit/Discharge][Events][Review][Config][Sound][Standby][PageRight]`
+**BottomBar**: 8 equal slots (128×64 px each) — `[PageLeft][Admit/Discharge][Events][Review][Config][Sound][Standby][PageRight]`
 
 ### 4.1.1 Colors (waveform + parameter areas)
 

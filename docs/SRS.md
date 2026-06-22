@@ -1,7 +1,7 @@
 # Software Requirements Specification (SRS)
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.3  
+**Version:** 0.4  
 **Date:** 2026-06-21  
 **Status:** Draft  
 **Safety Class (IEC 62304):** Not applicable — demonstration software, not for clinical use
@@ -148,10 +148,10 @@ flowchart LR
 
 | Region | Coordinates | Size |
 |--------|-------------|------|
-| TopBar | (0,0)–(1023,51) | 1024×52 |
-| WaveformPanel | (0,52)–(891,711) | 892×660 |
-| ParamPanel | (892,52)–(1023,711) | 132×660 |
-| BottomBar | (0,712)–(1023,767) | 1024×56 |
+| TopBar | (0,0)–(1023,63) | 1024×64 |
+| WaveformPanel | (0,64)–(639,703) | 640×640 |
+| ParamPanel | (640,64)–(1023,703) | 384×640 |
+| BottomBar | (0,704)–(1023,767) | 1024×64 |
 
 | Attribute | Value |
 |-----------|-------|
@@ -161,11 +161,13 @@ flowchart LR
 
 Left to right (pixel widths):
 
-1. Patient info — 188 px (name + bed number, two lines)
+1. Patient info — 180 px (name + bed number, two lines of 32 px each)
 2. Physiological alarm — 300 px
-3. Alarm icons — 52 px
+3. Alarm icons — 64 px
 4. Technical alarm — 300 px
-5. System date and time — 188 px (date + time, two lines)
+5. System date and time — 180 px (date + time, two lines of 32 px each)
+
+M2 demo placeholders (CR-001): PatientInfo `John McCarthy` / `ICU-1076` (white on black); PhysAlarm `Ventricular Tachycardia` (white on red); TechAlarm `Missing Leads` (black on yellow); DateTime `June 30, 2026` / `09:59:47` (white on black).
 
 | Attribute | Value |
 |-----------|-------|
@@ -173,7 +175,7 @@ Left to right (pixel widths):
 
 ### FR-H03 Waveform Area
 
-Top to bottom (132 px per row):
+Top to bottom (128 px per row):
 
 1. ECG Lead II
 2. ECG Lead V1 (default; lead switch planned)

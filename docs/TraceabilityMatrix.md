@@ -22,8 +22,8 @@ Maps SRS requirements → verification test cases.
 
 | Req ID | Requirement Summary | Test Cases | Status |
 |--------|---------------------|------------|--------|
-| FR-H01 | 1024×768 pixel layout (892:132) | TC-SYS-01 | Planned |
-| FR-H02 | Top status bar (188/300/52/300/188) | TC-SYS-02 | Planned |
+| FR-H01 | 1024×768 pixel layout (640:384) | TC-SYS-01 | Planned |
+| FR-H02 | Top status bar (180/300/64/300/180, 64 px height) | TC-SYS-02 | Planned |
 | FR-H03 | Five waveform rows incl. Temp | TC-SYS-03, TC-IT-02 | Planned |
 | FR-H04 | Param order + colors + association | TC-SYS-04, TC-SYS-11, TC-SYS-12, TC-SYS-13, TC-IT-03 | Planned |
 | FR-H05 | Bottom 8-slot bar | TC-SYS-05 | Planned |
