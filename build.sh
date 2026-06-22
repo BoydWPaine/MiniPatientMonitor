@@ -60,16 +60,43 @@ clean_build() {
     fi
 }
 
+detect_qt_prefix() {
+    if [[ -n "${CMAKE_PREFIX_PATH:-}" ]]; then
+        echo "${CMAKE_PREFIX_PATH}"
+        return
+    fi
+    if [[ -d "${HOME}/Grok/Qt/6.4.2/gcc_64" ]]; then
+        echo "${HOME}/Grok/Qt/6.4.2/gcc_64"
+        return
+    fi
+    if [[ -d "/opt/Qt/6.4.2/gcc_64" ]]; then
+        echo "/opt/Qt/6.4.2/gcc_64"
+        return
+    fi
+    echo ""
+}
+
 build_project() {
     local build_type="$1"
 
     require_cmake
 
-    echo "==> Configuring ${build_type} build in ${BUILD_DIR}"
-    cmake -B "${BUILD_DIR}" \
-        -DCMAKE_BUILD_TYPE="${build_type}" \
-        -DMPM_BUILD_DEVICE=ON \
+    local cmake_args=(
+        -B "${BUILD_DIR}"
+        -DCMAKE_BUILD_TYPE="${build_type}"
+        -DMPM_BUILD_DEVICE=ON
         -DMPM_BUILD_HOST=ON
+    )
+
+    local qt_prefix
+    qt_prefix="$(detect_qt_prefix)"
+    if [[ -n "${qt_prefix}" ]]; then
+        cmake_args+=("-DCMAKE_PREFIX_PATH=${qt_prefix}")
+        echo "==> Using Qt from ${qt_prefix}"
+    fi
+
+    echo "==> Configuring ${build_type} build in ${BUILD_DIR}"
+    cmake "${cmake_args[@]}"
 
     echo "==> Building with ${JOBS} job(s)"
     cmake --build "${BUILD_DIR}" -j "${JOBS}"

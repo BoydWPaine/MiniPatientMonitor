@@ -262,6 +262,24 @@ int osal_tcp_recv(osal_socket_t socket, void* buf, size_t len)
     return tcp_recv_all(socket, buf, len) ? static_cast<int>(len) : -1;
 }
 
+bool osal_tcp_wait_readable(osal_socket_t socket, uint32_t timeout_ms)
+{
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(socket, &readfds);
+
+    timeval tv {};
+    timeval* tv_ptr = nullptr;
+    if (timeout_ms != UINT32_MAX) {
+        tv.tv_sec = static_cast<time_t>(timeout_ms / 1000U);
+        tv.tv_usec = static_cast<suseconds_t>((timeout_ms % 1000U) * 1000U);
+        tv_ptr = &tv;
+    }
+
+    const int ready = ::select(socket + 1, &readfds, nullptr, nullptr, tv_ptr);
+    return ready > 0 && FD_ISSET(socket, &readfds);
+}
+
 bool osal_file_read(const char* path, void* buf, size_t* inout_len)
 {
     if (path == nullptr || buf == nullptr || inout_len == nullptr) {

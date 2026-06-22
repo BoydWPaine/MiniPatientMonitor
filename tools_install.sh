@@ -22,11 +22,12 @@ Installs:
   - pkg-config
   - zlib development headers
   - protobuf-compiler + libprotobuf-dev (>= ${PROTOBUF_MIN_VERSION})
+  - qt6-base-dev + libgl1-mesa-dev (Host Qt UI, M2)
 
 Supported:
   - Debian / Ubuntu (apt)
 
-Optional (not installed by default, needed in later milestones):
+Optional (not installed by this script — see docs/DevSetup.md):
   - Qt6 (Widgets, Network) for Host UI (M2+)
   - LVGL + SDL2 for Device config UI (M2+)
   - Google Test for unit tests (M5+)
@@ -69,6 +70,7 @@ install_debian_packages() {
     run_as_root apt-get update
 
     echo "==> Installing build dependencies"
+    echo "==> Installing M1 build dependencies"
     run_as_root apt-get install -y \
         build-essential \
         cmake \
@@ -77,6 +79,11 @@ install_debian_packages() {
         zlib1g-dev \
         protobuf-compiler \
         libprotobuf-dev
+
+    echo "==> Installing M2 Host UI dependencies (Qt6 Widgets)"
+    run_as_root apt-get install -y \
+        qt6-base-dev \
+        libgl1-mesa-dev
 }
 
 verify_tools() {
@@ -129,6 +136,7 @@ verify_tools() {
     echo
     echo "All required tools are available."
     echo "Next step: ./build.sh debug"
+    echo "For Qt6 / LVGL / GTest (M2/M5), see docs/DevSetup.md"
 }
 
 main() {

@@ -1,9 +1,11 @@
-#include "net_client.h"
+#include "ui/main_window.h"
 
-#include <cstdio>
+#include <QApplication>
 
-int main()
+int main(int argc, char* argv[])
 {
-    std::printf("MiniPatientMonitor host (TCP client)\n");
-    return mpm::host::run_client(MPM_TCP_HOST, static_cast<uint16_t>(MPM_TCP_PORT), 3);
+    QApplication app(argc, argv);
+    mpm::host::MainWindow window;
+    window.show();
+    return app.exec();
 }

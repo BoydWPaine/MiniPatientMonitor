@@ -43,6 +43,7 @@ osal_socket_t osal_tcp_connect(const char* host, uint16_t port);
 void osal_tcp_close(osal_socket_t socket);
 int osal_tcp_send(osal_socket_t socket, const void* buf, size_t len);
 int osal_tcp_recv(osal_socket_t socket, void* buf, size_t len);
+bool osal_tcp_wait_readable(osal_socket_t socket, uint32_t timeout_ms);
 
 bool osal_file_read(const char* path, void* buf, size_t* inout_len);
 bool osal_file_write(const char* path, const void* buf, size_t len);
