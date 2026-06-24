@@ -1,5 +1,6 @@
 #include "device_config.h"
 #include "ecg_sim.h"
+#include "sim_common.h"
 #include "spo2_sim.h"
 
 #include <cstdio>
@@ -17,6 +18,20 @@ int main()
     if (packet.hr() != 148) {
         std::fprintf(stderr, "expected hr=148, got %u\n", packet.hr());
         return 1;
+    }
+    if (packet.ecg_lead_ii_size() != static_cast<int>(mpm::device::kSamplesPerPacket)) {
+        std::fprintf(stderr,
+                     "expected %u ECG samples, got %d\n",
+                     mpm::device::kSamplesPerPacket,
+                     packet.ecg_lead_ii_size());
+        return 1;
+    }
+    for (int i = 0; i < packet.ecg_lead_ii_size(); ++i) {
+        const int32_t sample = packet.ecg_lead_ii(i);
+        if (sample > mpm::device::kWaveAmplitude || sample < -mpm::device::kWaveAmplitude) {
+            std::fprintf(stderr, "ECG sample out of range: %d\n", sample);
+            return 1;
+        }
     }
 
     if (!store.set_spo2(88)) {

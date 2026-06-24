@@ -1,6 +1,7 @@
 #include "resp_sim.h"
 
 #include "sim_common.h"
+#include "wave_demo_data.h"
 
 namespace mpm::device {
 
@@ -12,12 +13,13 @@ monitor::RespPacket RespSim::next_packet()
     monitor::RespPacket packet;
     packet.set_resp_rate(cfg.resp_rate);
 
-    const double time_s =
-        static_cast<double>(sample_index_ * kSamplePeriodMs) / 1000.0;
-    const double frequency_hz = static_cast<double>(cfg.resp_rate) / 60.0;
-    packet.add_resp_wave(sine_sample(frequency_hz, 0.5, time_s));
+    for (uint32_t i = 0; i < kSamplesPerPacket; ++i) {
+        const uint32_t idx =
+            (static_cast<uint32_t>(sample_index_) + i) % kDemoSampleCount;
+        packet.add_resp_wave(clamp_wave(kWaveResp[idx]));
+    }
 
-    ++sample_index_;
+    sample_index_ = (sample_index_ + kSamplesPerPacket) % kDemoSampleCount;
     return packet;
 }
 

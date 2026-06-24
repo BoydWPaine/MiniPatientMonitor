@@ -1,6 +1,7 @@
 #include "spo2_sim.h"
 
 #include "sim_common.h"
+#include "wave_demo_data.h"
 
 #include <random>
 
@@ -22,12 +23,13 @@ monitor::Spo2Packet Spo2Sim::next_packet()
     packet.set_spo2(cfg.spo2);
     packet.set_pr(cfg.pr);
 
-    const double time_s =
-        static_cast<double>(sample_index_ * kSamplePeriodMs) / 1000.0;
-    const double frequency_hz = static_cast<double>(cfg.pr) / 60.0;
-    packet.add_pleth_wave(sine_sample(frequency_hz, 0.0, time_s));
+    for (uint32_t i = 0; i < kSamplesPerPacket; ++i) {
+        const uint32_t idx =
+            (static_cast<uint32_t>(sample_index_) + i) % kDemoSampleCount;
+        packet.add_pleth_wave(clamp_wave(kWavePleth[idx]));
+    }
 
-    ++sample_index_;
+    sample_index_ = (sample_index_ + kSamplesPerPacket) % kDemoSampleCount;
     return packet;
 }
 

@@ -56,7 +56,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     for (WaveformWidget* widget :
          {ecg_lead2_widget_, ecg_leadv_widget_, pleth_widget_, resp_widget_, temp_widget_}) {
-        widget->setFixedHeight(kRowHeight);
+        widget->setFixedSize(kWaveformWidth, kRowHeight);
         waveform_layout->addWidget(widget);
     }
 
@@ -112,18 +112,6 @@ void MainWindow::onManualNibpClicked()
     nibp_controller_.triggerManualMeasure();
 }
 
-int32_t MainWindow::pickLeadSample(const monitor::EcgPacket& packet, int lead_index) const
-{
-    switch (lead_index) {
-    case 2:
-        return packet.ecg_lead_ii_size() > 0 ? packet.ecg_lead_ii(0) : 0;
-    case 8:
-        return packet.ecg_lead_v1_size() > 0 ? packet.ecg_lead_v1(0) : 0;
-    default:
-        return 0;
-    }
-}
-
 void MainWindow::onEnvelopeReceived(const QByteArray& payload)
 {
     monitor::Envelope envelope;
@@ -135,31 +123,35 @@ void MainWindow::onEnvelopeReceived(const QByteArray& payload)
     case monitor::Envelope::kEcg: {
         const auto& ecg = envelope.ecg();
         param_panel_->setHr(ecg.hr());
-        ecg_lead2_widget_->addSample(pickLeadSample(ecg, 2));
-        ecg_leadv_widget_->addSample(pickLeadSample(ecg, 8));
+        for (int i = 0; i < ecg.ecg_lead_ii_size(); ++i) {
+            ecg_lead2_widget_->addSample(ecg.ecg_lead_ii(i));
+        }
+        for (int i = 0; i < ecg.ecg_lead_v1_size(); ++i) {
+            ecg_leadv_widget_->addSample(ecg.ecg_lead_v1(i));
+        }
         break;
     }
     case monitor::Envelope::kSpo2: {
         const auto& spo2 = envelope.spo2();
         param_panel_->setSpo2Pr(spo2.spo2(), spo2.pr());
-        if (spo2.pleth_wave_size() > 0) {
-            pleth_widget_->addSample(spo2.pleth_wave(0));
+        for (int i = 0; i < spo2.pleth_wave_size(); ++i) {
+            pleth_widget_->addSample(spo2.pleth_wave(i));
         }
         break;
     }
     case monitor::Envelope::kResp: {
         const auto& resp = envelope.resp();
         param_panel_->setRespRate(resp.resp_rate());
-        if (resp.resp_wave_size() > 0) {
-            resp_widget_->addSample(resp.resp_wave(0));
+        for (int i = 0; i < resp.resp_wave_size(); ++i) {
+            resp_widget_->addSample(resp.resp_wave(i));
         }
         break;
     }
     case monitor::Envelope::kTemp: {
         const auto& temp = envelope.temp();
         param_panel_->setTemperature(temp.temperature());
-        if (temp.temp_wave_size() > 0) {
-            temp_widget_->addSample(temp.temp_wave(0));
+        for (int i = 0; i < temp.temp_wave_size(); ++i) {
+            temp_widget_->addSample(temp.temp_wave(i));
         }
         break;
     }

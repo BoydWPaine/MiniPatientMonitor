@@ -24,8 +24,6 @@ private slots:
     void onManualNibpClicked();
 
 private:
-    int32_t pickLeadSample(const monitor::EcgPacket& packet, int lead_index) const;
-
     NetThread net_thread_;
     NibpController nibp_controller_;
     WaveformWidget* ecg_lead2_widget_ = nullptr;

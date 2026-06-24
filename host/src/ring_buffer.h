@@ -44,7 +44,7 @@ private:
     size_t count_ = 0;
 };
 
-constexpr size_t kRingBufferCapacity = 120;
+constexpr size_t kRingBufferCapacity = 300;
 
 }  // namespace mpm::host
 
