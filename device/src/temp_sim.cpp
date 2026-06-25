@@ -1,6 +1,7 @@
 #include "temp_sim.h"
 
 #include "sim_common.h"
+#include "wave_demo_data.h"
 
 #include <random>
 
@@ -21,13 +22,13 @@ monitor::TempPacket TempSim::next_packet()
 
     packet.set_temperature(cfg.temperature);
 
-    const double time_s =
-        static_cast<double>(sample_index_ * kSamplePeriodMs) / 1000.0;
-    const double slow_wave =
-        std::sin(2.0 * kPi * 0.05 * time_s) * static_cast<double>(kWaveAmplitude) * 0.15;
-    packet.add_temp_wave(clamp_wave(static_cast<int32_t>(slow_wave)));
+    for (uint32_t i = 0; i < kSamplesPerPacket; ++i) {
+        const uint32_t idx =
+            (static_cast<uint32_t>(sample_index_) + i) % kDemoSampleCount;
+        packet.add_temp_wave(clamp_wave(kWaveTemp[idx]));
+    }
 
-    ++sample_index_;
+    sample_index_ = (sample_index_ + kSamplesPerPacket) % kDemoSampleCount;
     return packet;
 }
 

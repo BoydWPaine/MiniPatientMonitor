@@ -14,7 +14,7 @@ namespace {
 constexpr int kWindowWidth = 1024;
 constexpr int kWindowHeight = 768;
 constexpr int kBottomBarHeight = 64;
-constexpr int kWaveformWidth = 640;
+constexpr int kWaveformWidth = 768;
 constexpr int kRowHeight = 128;
 }  // namespace
 
