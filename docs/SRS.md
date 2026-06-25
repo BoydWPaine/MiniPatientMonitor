@@ -1,8 +1,8 @@
 # Software Requirements Specification (SRS)
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.4  
-**Date:** 2026-06-21  
+**Version:** 0.6  
+**Date:** 2026-06-23  
 **Status:** Draft  
 **Safety Class (IEC 62304):** Not applicable — demonstration software, not for clinical use
 
@@ -89,7 +89,7 @@ flowchart LR
 | Temp | `TempPacket` | Temperature wave | Temperature (0.1°C integer; 365 = 36.5°C) |
 | NIBP | `NibpPacket` | — | Sys/Mean/Dia (mmHg); **on Host request only** |
 
-**Streaming modules** (Device→Host, 25 Hz, 1 sample/packet, ±2048): ECG, SpO2, Resp, Temp.
+**Streaming modules** (Device→Host, 100 Hz, 4 samples/packet, ±2048): ECG, SpO2, Resp, Temp. All waveform fields use cyclic demo data from `WaveData.csv` (including **Temp** column, CR-003).
 
 **NIBP** is not streamed. Host sends `NibpRequest` (empty message); Device responds once with `NibpPacket`. Manual vs STAT timing is Host application logic (STAT default 5 min, configurable).
 
@@ -98,7 +98,7 @@ flowchart LR
 | Attribute | Value |
 |-----------|-------|
 | Priority | P0 |
-| Acceptance | Streaming modules at 25 Hz; HR default 60 bpm; Host UI shows Lead II + V1; all 12 leads stored by Host (M4); NIBP only after `NibpRequest` |
+| Acceptance | Streaming modules at 100 Hz; demo waveforms from `WaveData.csv`; HR default 60 bpm; Host UI shows Lead II + V1; all 12 leads stored by Host (M4); NIBP only after `NibpRequest` |
 
 ### FR-D03 Configuration UI (LVGL)
 
@@ -149,8 +149,8 @@ flowchart LR
 | Region | Coordinates | Size |
 |--------|-------------|------|
 | TopBar | (0,0)–(1023,63) | 1024×64 |
-| WaveformPanel | (0,64)–(639,703) | 640×640 |
-| ParamPanel | (640,64)–(1023,703) | 384×640 |
+| WaveformPanel | (0,64)–(767,703) | 768×640 |
+| ParamPanel | (768,64)–(1023,703) | 256×640 |
 | BottomBar | (0,704)–(1023,767) | 1024×64 |
 
 | Attribute | Value |
@@ -181,12 +181,14 @@ Top to bottom (128 px per row):
 2. ECG Lead V1 (default; lead switch planned)
 3. PR pleth
 4. Respiratory
-5. Temperature waveform
+5. Temperature waveform (`WaveData.csv` Temp demo, CR-003)
+
+**Sweep refresh (CR-002):** left-to-right with 10 px erase gap; row width **768 px** (CR-003).
 
 | Attribute | Value |
 |-----------|-------|
 | Priority | P0 |
-| Refresh | ≥ 25 Hz |
+| Refresh | ≥ 100 Hz |
 
 ### FR-H04 Parameter Area & Association Rules
 
@@ -202,7 +204,7 @@ Top to bottom:
 
 **Colors:** black background; 1 px gray `(128,128,128)` separators between param rows; HR+ECG `(9,78,22)`; SpO2+PR `(9,68,58)`; Resp `(98,80,4)`; Temp `(255,255,255)`; NIBP `(94,94,94)`.
 
-**Ring buffer:** 120 samples (3 s) per waveform channel.
+**Demo trace:** 300 samples (3 s @ 100 Hz) per channel, cyclic; Host sweep bitmap **768 px** wide (CR-003).
 
 | Attribute | Value |
 |-----------|-------|
@@ -303,7 +305,7 @@ Configuration and patient data shall use binary files (no SQL database), simulat
 
 | ID | Category | Requirement | Acceptance |
 |----|----------|-------------|------------|
-| NFR-01 | Performance | Waveform refresh ≥ 25 Hz | Measured via log counter |
+| NFR-01 | Performance | Waveform refresh ≥ 100 Hz | Measured via log counter |
 | NFR-02 | Performance | Alarm evaluation 1 Hz | Timer audit |
 | NFR-03 | Reliability | Watchdog reset logging (MCU phase) | Log entry after reset |
 | NFR-04 | Maintainability | Core module unit test coverage ≥ 60% | lcov report |
@@ -357,3 +359,5 @@ See [TraceabilityMatrix.md](TraceabilityMatrix.md) for FR → test case mapping.
 | 0.1 | 2026-06-20 | Initial SRS |
 | 0.2 | 2026-06-21 | Comment/05 Adjust01: phases, Device=Server, module packets, 12-lead ECG, pixel UI |
 | 0.3 | 2026-06-21 | Comment/05 Adjust02: M2 defaults, colors, NibpRequest, LVGL ranges, 120-sample buffer |
+| 0.5 | 2026-06-22 | CR-002: 100 Hz / 4 samples, sweep refresh, WaveData.csv demo |
+| 0.6 | 2026-06-23 | CR-003: 768:256 layout, Temp column in WaveData.csv |

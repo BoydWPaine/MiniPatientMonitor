@@ -1,8 +1,8 @@
 # Architecture Design Document
 
 **Project:** MiniPatientMonitor  
-**Version:** 0.4  
-**Date:** 2026-06-21
+**Version:** 0.6  
+**Date:** 2026-06-23
 
 ---
 
@@ -153,10 +153,10 @@ Each vital-sign channel is simulated by an **independent module** that emits its
 
 | Task | Priority | Period | Stack |
 |------|----------|--------|-------|
-| EcgTask | High (3) | 40 ms | 2 KB |
-| Spo2Task | High (3) | 40 ms | 2 KB |
-| RespTask | Normal (2) | 40 ms | 2 KB |
-| TempTask | Normal (2) | 40 ms | 2 KB |
+| EcgTask | High (3) | 10 ms | 2 KB |
+| Spo2Task | High (3) | 10 ms | 2 KB |
+| RespTask | Normal (2) | 10 ms | 2 KB |
+| TempTask | Normal (2) | 10 ms | 2 KB |
 | NetTask | Normal (2) | event | 4 KB |
 | UITask | Low (1) | 50 ms | 4 KB |
 | AlarmTask | Normal (2) | 1000 ms | 1 KB |
@@ -165,10 +165,11 @@ Each vital-sign channel is simulated by an **independent module** that emits its
 
 | Constant | Value |
 |----------|-------|
-| Sample rate | 25 Hz (40 ms period) |
-| Samples per packet | 1 × `int32` per waveform field |
+| Sample rate | 100 Hz (10 ms period) |
+| Samples per packet | 4 × `int32` per waveform field |
 | Amplitude full scale | ±2048 (normalized, unified across all waveforms) |
-| Ring buffer capacity | 120 samples (3 s at 25 Hz) |
+| Demo waveform source | `WaveData.csv` → `wave_demo_data.h` (I–V6, Pleth, Resp, **Temp**; 300 samples, 3 s loop) |
+| Host sweep display | Left-to-right scan; 1 px erase + 1 px draw; **10 px gap**; row width **768 px** (CR-003) |
 
 Ring buffer rationale: HR/PR demo = 60 bpm → 3 s holds 3 complete ECG/pleth cycles; Resp demo = 20 /min → 3 s holds 1 complete resp cycle.
 
@@ -204,8 +205,8 @@ After LVGL edits, parameters use **fixed configured values** (no further randomi
 | Icons | (480,0)–(543,63) | 64×64 |
 | TechAlarm | (544,0)–(843,63) | 300×64 |
 | DateTime | (844,0)–(1023,63) | 180×64 |
-| WaveformPanel | (0,64)–(639,703) | 640×640 |
-| ParamPanel | (640,64)–(1023,703) | 384×640 |
+| WaveformPanel | (0,64)–(767,703) | 768×640 |
+| ParamPanel | (768,64)–(1023,703) | 256×640 |
 | BottomBar | (0,704)–(1023,767) | 1024×64 |
 
 **TopBar demo placeholders (M2; alarm-linked in M3)** — CR-001 §3.1:
@@ -221,21 +222,21 @@ After LVGL edits, parameters use **fixed configured values** (no further randomi
 
 | Widget | Coordinates | Content |
 |--------|-------------|---------|
-| EcgLead2Widget | (0,64)–(639,191) | ECG Lead II |
-| EcgLeadVWidget | (0,192)–(639,319) | ECG Lead V1 (default; lead switch planned) |
-| PrPlethWidget | (0,320)–(639,447) | PR pleth |
-| RespWaveWidget | (0,448)–(639,575) | Respiratory |
-| TempWaveWidget | (0,576)–(639,703) | Temperature waveform |
+| EcgLead2Widget | (0,64)–(767,191) | ECG Lead II |
+| EcgLeadVWidget | (0,192)–(767,319) | ECG Lead V1 (default; lead switch planned) |
+| PrPlethWidget | (0,320)–(767,447) | PR pleth |
+| RespWaveWidget | (0,448)–(767,575) | Respiratory |
+| TempWaveWidget | (0,576)–(767,703) | Temperature waveform (`WaveData.csv` Temp demo) |
 
 **ParamPanel** (top to bottom, 128 px per row):
 
 | Widget | Coordinates | Content |
 |--------|-------------|---------|
-| HrParamRow | (640,64)–(1023,191) | HR |
-| NibpParamRow | (640,192)–(1023,319) | NIBP |
-| SpO2PrRow | (640,320)–(1023,447) | SpO2 (large) + PR (small) |
-| RespParamRow | (640,448)–(1023,575) | Resp rate |
-| TempParamRow | (640,576)–(1023,703) | Temp (display as °C float) |
+| HrParamRow | (768,64)–(1023,191) | HR |
+| NibpParamRow | (768,192)–(1023,319) | NIBP |
+| SpO2PrRow | (768,320)–(1023,447) | SpO2 (large) + PR (small) |
+| RespParamRow | (768,448)–(1023,575) | Resp rate |
+| TempParamRow | (768,576)–(1023,703) | Temp (display as °C float) |
 
 **BottomBar**: 8 equal slots (128×64 px each) — `[PageLeft][Admit/Discharge][Events][Review][Config][Sound][Standby][PageRight]`
 
@@ -257,7 +258,7 @@ After LVGL edits, parameters use **fixed configured values** (no further randomi
 |--------|----------------|
 | `NetworkClient` | TCP connect; bidirectional `read_frame` / `write_frame`; push Device→Host messages to queue |
 | `NibpController` | Host app layer: manual measure trigger + STAT timer (default 5 min, configurable); sends `NibpRequest` |
-| `WaveformWidgets` | 120-sample ring buffer → QPainter polyline, 25 Hz refresh |
+| `WaveformWidgets` | `QImage` sweep trace, 100 Hz refresh, 768 px row width (CR-003) |
 | `ParamWidgets` | Numeric QLabel updates; temp display converts 0.1°C int → °C float |
 | `PhysAlarmEngine` | QTimer 1000 ms; compare numerics vs `AlarmLimits` |
 | `TechAlarmDisplay` | Parse `TechAlarmEvent.repeated code`, localize message text |
