@@ -48,14 +48,12 @@ uint32_t mpm_config_get_temperature(const MpmDeviceConfigStore* store)
 
 uint32_t mpm_config_get_nibp_sys(const MpmDeviceConfigStore* store)
 {
-    const auto cfg = native_store(store).snapshot();
-    return cfg.nibp_sys > 0 ? cfg.nibp_sys : 120;
+    return native_store(store).snapshot().nibp_sys;
 }
 
 uint32_t mpm_config_get_nibp_dia(const MpmDeviceConfigStore* store)
 {
-    const auto cfg = native_store(store).snapshot();
-    return cfg.nibp_dia > 0 ? cfg.nibp_dia : 80;
+    return native_store(store).snapshot().nibp_dia;
 }
 
 bool mpm_config_set_hr(MpmDeviceConfigStore* store, uint32_t hr)

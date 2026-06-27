@@ -48,7 +48,7 @@ int main()
 
     const monitor::Spo2Packet spo2_packet2 = spo2.next_packet();
     if (spo2_packet2.spo2() != 88) {
-        std::fprintf(stderr, "spo2 randomization did not stop: %u\n", spo2_packet2.spo2());
+        std::fprintf(stderr, "expected stable spo2=88, got %u\n", spo2_packet2.spo2());
         return 1;
     }
 

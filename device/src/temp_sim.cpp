@@ -3,22 +3,14 @@
 #include "sim_common.h"
 #include "wave_demo_data.h"
 
-#include <random>
-
 namespace mpm::device {
 
 TempSim::TempSim(DeviceConfigStore& config) : config_(config) {}
 
 monitor::TempPacket TempSim::next_packet()
 {
-    DeviceConfig cfg = config_.snapshot();
+    const DeviceConfig cfg = config_.snapshot();
     monitor::TempPacket packet;
-
-    if (!cfg.temp_fixed) {
-        thread_local std::mt19937 rng{std::random_device{}()};
-        std::uniform_int_distribution<uint32_t> dist(362, 368);
-        cfg.temperature = dist(rng);
-    }
 
     packet.set_temperature(cfg.temperature);
 

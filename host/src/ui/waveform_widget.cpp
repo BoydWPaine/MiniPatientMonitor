@@ -5,10 +5,20 @@
 #include <QResizeEvent>
 #include <QTimer>
 
+#include <algorithm>
+
 namespace mpm::host {
 
-WaveformWidget::WaveformWidget(const QColor& color, QWidget* parent)
-    : QWidget(parent), color_(color)
+WaveformWidget::WaveformWidget(const QColor& color,
+                               const QString& label,
+                               const bool show_ecg_scale,
+                               QWidget* parent)
+    : QWidget(parent),
+      color_(color),
+      label_text_(label),
+      show_ecg_scale_(show_ecg_scale),
+      trace_end_x_(show_ecg_scale ? kTraceEndXEcg : kTraceEndXDefault),
+      amplitude_range_(show_ecg_scale ? kEcgAmplitudeRange : kDefaultAmplitudeRange)
 {
     setAutoFillBackground(true);
     QPalette palette = this->palette();
@@ -30,7 +40,7 @@ void WaveformWidget::addSample(int32_t sample)
 void WaveformWidget::clearSamples()
 {
     pending_samples_.clear();
-    draw_x_ = 0;
+    draw_index_ = 0;
     resetColumns();
     update();
 }
@@ -46,14 +56,21 @@ void WaveformWidget::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
     resetColumns();
-    draw_x_ = 0;
+    draw_index_ = 0;
+}
+
+bool WaveformWidget::isTraceColumn(const int x) const
+{
+    return x >= kTraceStartX && x <= trace_end_x_;
 }
 
 int WaveformWidget::sampleToPixelY(int32_t sample) const
 {
-    const double y_scale = static_cast<double>(height() - 8) / (2.0 * 2048.0);
+    const int32_t clamped = std::max(-amplitude_range_, std::min(amplitude_range_, sample));
+    const double y_scale =
+        static_cast<double>(height() - 8) / (2.0 * static_cast<double>(amplitude_range_));
     const double y_center = static_cast<double>(height()) / 2.0;
-    return static_cast<int>(y_center - (static_cast<double>(sample) * y_scale));
+    return static_cast<int>(y_center - (static_cast<double>(clamped) * y_scale));
 }
 
 void WaveformWidget::advanceSweep(int32_t sample)
@@ -67,13 +84,17 @@ void WaveformWidget::advanceSweep(int32_t sample)
         resetColumns();
     }
 
-    const int erase_x = (draw_x_ + kSweepGap) % w;
+    const int trace_width = trace_end_x_ - kTraceStartX + 1;
+    const int erase_offset = (draw_index_ + kSweepGap) % trace_width;
+    const int erase_x = kTraceStartX + erase_offset;
+    const int draw_x = kTraceStartX + draw_index_;
+
     column_valid_[static_cast<size_t>(erase_x)] = false;
 
-    column_y_[static_cast<size_t>(draw_x_)] = sampleToPixelY(sample);
-    column_valid_[static_cast<size_t>(draw_x_)] = true;
+    column_y_[static_cast<size_t>(draw_x)] = sampleToPixelY(sample);
+    column_valid_[static_cast<size_t>(draw_x)] = true;
 
-    draw_x_ = (draw_x_ + 1) % w;
+    draw_index_ = (draw_index_ + 1) % trace_width;
 }
 
 void WaveformWidget::onRefresh()
@@ -88,6 +109,35 @@ void WaveformWidget::onRefresh()
     update();
 }
 
+void WaveformWidget::drawOverlay(QPainter& painter) const
+{
+    QFont label_font = painter.font();
+    label_font.setBold(true);
+    label_font.setPointSize(14);
+    painter.setFont(label_font);
+    painter.setPen(color_);
+    painter.drawText(QRect(0, 0, kLabelWidth, kLabelHeight),
+                     Qt::AlignCenter,
+                     label_text_);
+
+    if (!show_ecg_scale_) {
+        return;
+    }
+
+    painter.fillRect(kScaleLineX, 0, kScaleLineWidth, height(), color_);
+
+    QFont unit_font = painter.font();
+    unit_font.setBold(true);
+    unit_font.setPointSize(9);
+    painter.setFont(unit_font);
+    painter.drawText(QRect(kScaleUnitX,
+                           kScaleUnitY,
+                           kScaleUnitWidth,
+                           kScaleUnitHeight),
+                     Qt::AlignCenter,
+                     QStringLiteral("1mV"));
+}
+
 void WaveformWidget::paintEvent(QPaintEvent* /*event*/)
 {
     QPainter painter(this);
@@ -95,6 +145,7 @@ void WaveformWidget::paintEvent(QPaintEvent* /*event*/)
 
     const int w = width();
     if (w <= 1 || static_cast<int>(column_y_.size()) != w) {
+        drawOverlay(painter);
         return;
     }
 
@@ -103,7 +154,10 @@ void WaveformWidget::paintEvent(QPaintEvent* /*event*/)
     painter.setPen(pen);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    for (int x = 0; x < w - 1; ++x) {
+    for (int x = kTraceStartX; x < trace_end_x_; ++x) {
+        if (!isTraceColumn(x) || !isTraceColumn(x + 1)) {
+            continue;
+        }
         if (!column_valid_[static_cast<size_t>(x)] ||
             !column_valid_[static_cast<size_t>(x + 1)]) {
             continue;
@@ -113,6 +167,8 @@ void WaveformWidget::paintEvent(QPaintEvent* /*event*/)
                          x + 1,
                          column_y_[static_cast<size_t>(x + 1)]);
     }
+
+    drawOverlay(painter);
 }
 
 }  // namespace mpm::host

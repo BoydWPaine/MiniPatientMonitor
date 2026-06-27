@@ -29,7 +29,6 @@ bool DeviceConfigStore::set_hr(uint32_t hr)
     }
     std::lock_guard<std::mutex> lock(mutex_);
     config_.hr = hr;
-    config_.hr_fixed = true;
     return true;
 }
 
@@ -40,7 +39,6 @@ bool DeviceConfigStore::set_pr(uint32_t pr)
     }
     std::lock_guard<std::mutex> lock(mutex_);
     config_.pr = pr;
-    config_.pr_fixed = true;
     return true;
 }
 
@@ -51,7 +49,6 @@ bool DeviceConfigStore::set_spo2(uint32_t spo2)
     }
     std::lock_guard<std::mutex> lock(mutex_);
     config_.spo2 = spo2;
-    config_.spo2_fixed = true;
     return true;
 }
 
@@ -62,7 +59,6 @@ bool DeviceConfigStore::set_resp_rate(uint32_t resp_rate)
     }
     std::lock_guard<std::mutex> lock(mutex_);
     config_.resp_rate = resp_rate;
-    config_.resp_fixed = true;
     return true;
 }
 
@@ -73,7 +69,6 @@ bool DeviceConfigStore::set_temperature(uint32_t temperature)
     }
     std::lock_guard<std::mutex> lock(mutex_);
     config_.temperature = temperature;
-    config_.temp_fixed = true;
     return true;
 }
 
@@ -85,7 +80,6 @@ bool DeviceConfigStore::set_nibp(uint32_t sys, uint32_t dia)
     std::lock_guard<std::mutex> lock(mutex_);
     config_.nibp_sys = sys;
     config_.nibp_dia = dia;
-    config_.nibp_fixed = true;
     return true;
 }
 

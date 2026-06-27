@@ -12,15 +12,8 @@ struct DeviceConfig {
     uint32_t spo2 = 98;
     uint32_t resp_rate = 20;
     uint32_t temperature = 365;
-    uint32_t nibp_sys = 0;
-    uint32_t nibp_dia = 0;
-
-    bool hr_fixed = false;
-    bool pr_fixed = false;
-    bool spo2_fixed = false;
-    bool resp_fixed = false;
-    bool temp_fixed = false;
-    bool nibp_fixed = false;
+    uint32_t nibp_sys = 120;
+    uint32_t nibp_dia = 80;
 
     bool ecg_enabled = true;
     bool spo2_enabled = true;

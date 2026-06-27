@@ -3,22 +3,14 @@
 #include "sim_common.h"
 #include "wave_demo_data.h"
 
-#include <random>
-
 namespace mpm::device {
 
 Spo2Sim::Spo2Sim(DeviceConfigStore& config) : config_(config) {}
 
 monitor::Spo2Packet Spo2Sim::next_packet()
 {
-    DeviceConfig cfg = config_.snapshot();
+    const DeviceConfig cfg = config_.snapshot();
     monitor::Spo2Packet packet;
-
-    if (!cfg.spo2_fixed) {
-        thread_local std::mt19937 rng{std::random_device{}()};
-        std::uniform_int_distribution<uint32_t> dist(97, 99);
-        cfg.spo2 = dist(rng);
-    }
 
     packet.set_spo2(cfg.spo2);
     packet.set_pr(cfg.pr);

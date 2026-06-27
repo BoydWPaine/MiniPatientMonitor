@@ -48,11 +48,26 @@ MainWindow::MainWindow(QWidget* parent)
     waveform_layout->setContentsMargins(0, 0, 0, 0);
     waveform_layout->setSpacing(0);
 
-    ecg_lead2_widget_ = new WaveformWidget(QColor(9, 78, 22), waveform_panel);
-    ecg_leadv_widget_ = new WaveformWidget(QColor(9, 78, 22), waveform_panel);
-    pleth_widget_ = new WaveformWidget(QColor(9, 68, 58), waveform_panel);
-    resp_widget_ = new WaveformWidget(QColor(98, 80, 4), waveform_panel);
-    temp_widget_ = new WaveformWidget(QColor(255, 255, 255), waveform_panel);
+    ecg_lead2_widget_ = new WaveformWidget(QColor(9, 78, 22),
+                                           QStringLiteral("II"),
+                                           true,
+                                           waveform_panel);
+    ecg_leadv_widget_ = new WaveformWidget(QColor(9, 78, 22),
+                                           QStringLiteral("V1"),
+                                           true,
+                                           waveform_panel);
+    pleth_widget_ = new WaveformWidget(QColor(9, 68, 58),
+                                       QStringLiteral("Pleth"),
+                                       false,
+                                       waveform_panel);
+    resp_widget_ = new WaveformWidget(QColor(98, 80, 4),
+                                      QStringLiteral("Resp"),
+                                      false,
+                                      waveform_panel);
+    temp_widget_ = new WaveformWidget(QColor(255, 255, 255),
+                                      QStringLiteral("Temp"),
+                                      false,
+                                      waveform_panel);
 
     for (WaveformWidget* widget :
          {ecg_lead2_widget_, ecg_leadv_widget_, pleth_widget_, resp_widget_, temp_widget_}) {
